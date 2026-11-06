@@ -1,0 +1,143 @@
+import { type Static, type TSchema, Type } from "typebox"
+import { Check, Errors } from "typebox/value"
+import { assertMermaidPolicy, MAX_MERMAID_BYTES } from "./mermaid-policy.js"
+
+export { MAX_MERMAID_BYTES }
+export const MAX_DOCUMENT_BYTES = 1024 * 1024
+export const MAX_BLOCKS = 100
+export const MAX_SLIDES = 20
+
+const IdSchema = Type.String({ pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$" })
+const TextSchema = Type.String({ minLength: 1, maxLength: MAX_DOCUMENT_BYTES, pattern: "\\S" })
+const TitleSchema = Type.String({ minLength: 1, maxLength: 512, pattern: "\\S" })
+const RevisionSchema = Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEGER })
+
+export const DocumentIdSchema = Type.String({
+  pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+  description: "Document ID returned by canvas_write; not a file path.",
+})
+
+export const MarkdownBlockSchema = Type.Object(
+  { id: IdSchema, type: Type.Literal("markdown"), markdown: TextSchema },
+  { additionalProperties: false },
+)
+
+export const DiagramDeckSchema = Type.Object(
+  {
+    id: IdSchema,
+    type: Type.Literal("diagram-deck"),
+    title: TitleSchema,
+    slides: Type.Array(
+      Type.Object(
+        {
+          id: IdSchema,
+          title: TitleSchema,
+          mermaid: Type.String({ minLength: 1, maxLength: MAX_MERMAID_BYTES }),
+          explanationMarkdown: TextSchema,
+        },
+        { additionalProperties: false },
+      ),
+      { minItems: 1, maxItems: MAX_SLIDES },
+    ),
+  },
+  { additionalProperties: false },
+)
+
+export const CanvasDocumentSchema = Type.Object(
+  {
+    schemaVersion: Type.Literal(1),
+    title: TitleSchema,
+    blocks: Type.Array(Type.Union([MarkdownBlockSchema, DiagramDeckSchema]), {
+      minItems: 1,
+      maxItems: MAX_BLOCKS,
+    }),
+  },
+  { additionalProperties: false },
+)
+
+export const WriteInputSchema = Type.Object(
+  {
+    document: CanvasDocumentSchema,
+    documentId: Type.Optional(DocumentIdSchema),
+    expectedRevision: Type.Optional(RevisionSchema),
+  },
+  { additionalProperties: false },
+)
+
+export const StoredDocumentSchema = Type.Object(
+  {
+    documentId: DocumentIdSchema,
+    revision: RevisionSchema,
+    updatedAt: Type.String({ minLength: 1, maxLength: 32 }),
+    document: CanvasDocumentSchema,
+  },
+  { additionalProperties: false },
+)
+
+export type CanvasDocument = Static<typeof CanvasDocumentSchema>
+export type MarkdownBlock = Static<typeof MarkdownBlockSchema>
+export type DiagramDeck = Static<typeof DiagramDeckSchema>
+export type WriteInput = Static<typeof WriteInputSchema>
+export type StoredDocument = Static<typeof StoredDocumentSchema>
+
+export function assertSchema<T extends TSchema>(
+  schema: T,
+  value: unknown,
+): asserts value is Static<T> {
+  if (!Check(schema, value)) {
+    const errors = Errors(schema, value)
+      .slice(0, 3)
+      .map((error) => `${error.instancePath || "/"}: ${error.message}`)
+      .join("; ")
+    throw new Error(`Invalid canvas data: ${errors}`)
+  }
+}
+
+export function validateDocumentId(id: string): void {
+  assertSchema(DocumentIdSchema, id)
+}
+
+function validateMermaid(source: string, location: string): void {
+  try {
+    assertMermaidPolicy(source)
+  } catch (error) {
+    throw new Error(`${location}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+export function validateDocument(value: unknown): CanvasDocument {
+  assertSchema(CanvasDocumentSchema, value)
+  if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_DOCUMENT_BYTES) {
+    throw new Error(`Canvas document exceeds ${MAX_DOCUMENT_BYTES} bytes`)
+  }
+  const blockIds = new Set<string>()
+  for (const block of value.blocks) {
+    if (blockIds.has(block.id)) throw new Error(`Duplicate block ID: ${block.id}`)
+    blockIds.add(block.id)
+    if (block.type !== "diagram-deck") continue
+    const slideIds = new Set<string>()
+    for (const slide of block.slides) {
+      if (slideIds.has(slide.id)) throw new Error(`Duplicate slide ID: ${block.id}/${slide.id}`)
+      slideIds.add(slide.id)
+      validateMermaid(slide.mermaid, `${block.id}/${slide.id}`)
+    }
+  }
+  return value
+}
+
+export function validateWriteInput(value: unknown): WriteInput {
+  assertSchema(WriteInputSchema, value)
+  if ((value.documentId === undefined) !== (value.expectedRevision === undefined)) {
+    throw new Error("Updates require both documentId and expectedRevision; creates omit both")
+  }
+  validateDocument(value.document)
+  return value
+}
+
+export function validateStoredDocument(value: unknown): StoredDocument {
+  assertSchema(StoredDocumentSchema, value)
+  if (Number.isNaN(Date.parse(value.updatedAt)))
+    throw new Error("Invalid canvas updatedAt timestamp")
+  validateDocument(value.document)
+  return value
+}

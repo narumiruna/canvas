@@ -1,0 +1,189 @@
+import { randomUUID } from "node:crypto"
+import * as fs from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { withFileMutationQueue } from "@earendil-works/pi-coding-agent"
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+import { type CanvasDocument, MAX_DOCUMENT_BYTES } from "../src/document.js"
+import { DocumentStore } from "../src/store.js"
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>()
+  return { ...actual, rename: vi.fn(actual.rename) }
+})
+
+const document: CanvasDocument = {
+  schemaVersion: 1,
+  title: "Example",
+  blocks: [{ id: "text", type: "markdown", markdown: "A document." }],
+}
+let cwd: string
+let outside: string
+let store: DocumentStore
+
+beforeEach(async () => {
+  cwd = await fs.mkdtemp(join(tmpdir(), "pi-canvas-store-"))
+  outside = await fs.mkdtemp(join(tmpdir(), "pi-canvas-outside-"))
+  store = new DocumentStore(cwd)
+})
+
+afterEach(async () => {
+  vi.restoreAllMocks()
+  await Promise.all([
+    fs.rm(cwd, { recursive: true, force: true }),
+    fs.rm(outside, { recursive: true, force: true }),
+  ])
+})
+
+describe("DocumentStore", () => {
+  test("persists and replaces a versioned snapshot without changing root ignore", async () => {
+    await fs.writeFile(join(cwd, ".gitignore"), "# User rules\n")
+    const input = structuredClone(document)
+    const pending = store.write({ document: input })
+    input.title = "Changed after invocation"
+    const { stored, path } = await pending
+    expect(stored.document.title).toBe("Example")
+    expect(stored.revision).toBe(1)
+    expect(path).toBe(join(cwd, ".pi", "canvas", `${stored.documentId}.json`))
+    expect(await store.read(stored.documentId)).toEqual(stored)
+    expect(await fs.readFile(join(cwd, ".gitignore"), "utf8")).toBe("# User rules\n")
+    expect(await fs.readFile(join(cwd, ".pi", "canvas", ".gitignore"), "utf8")).toBe("*\n")
+    const result = await store.write({
+      document: { ...document, title: "Updated" },
+      documentId: stored.documentId,
+      expectedRevision: 1,
+    })
+    expect(result.stored.revision).toBe(2)
+    expect((await store.read(stored.documentId)).document.title).toBe("Updated")
+    expect((await fs.stat(path)).mode & 0o777).toBe(0o600)
+    // A new extension/store instance can read workspace artifacts after reload.
+    expect(await new DocumentStore(cwd).read(stored.documentId)).toEqual(result.stored)
+  })
+
+  test("rejects stale and concurrent updates without losing a committed revision", async () => {
+    const { stored } = await store.write({ document })
+    const input = { document, documentId: stored.documentId, expectedRevision: 1 }
+    const results = await Promise.allSettled([store.write(input), store.write(input)])
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1)
+    const failure = results.find((r) => r.status === "rejected")
+    expect(failure?.status === "rejected" && String(failure.reason)).toContain("Revision conflict")
+    expect((await store.read(stored.documentId)).revision).toBe(2)
+    await expect(store.write(input)).rejects.toThrow("Revision conflict")
+  })
+
+  test("preserves the previous file and removes temporary files if rename fails", async () => {
+    const { stored, path } = await store.write({ document })
+    const before = await fs.readFile(path, "utf8")
+    vi.mocked(fs.rename).mockRejectedValueOnce(new Error("Simulated disk failure"))
+    await expect(
+      store.write({
+        document: { ...document, title: "Never committed" },
+        documentId: stored.documentId,
+        expectedRevision: 1,
+      }),
+    ).rejects.toThrow("disk failure")
+    expect(await fs.readFile(path, "utf8")).toBe(before)
+    expect(
+      (await fs.readdir(join(cwd, ".pi", "canvas"))).filter((name) => name.endsWith(".tmp")),
+    ).toEqual([])
+  })
+
+  test("checks cancellation before commit, including after waiting for the host file queue", async () => {
+    const { stored, path } = await store.write({ document })
+    const controller = new AbortController()
+    let release: (() => void) | undefined
+    let entered: (() => void) | undefined
+    const started = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    const holding = withFileMutationQueue(path, async () => {
+      entered?.()
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+    })
+    await started
+    const pending = store.write(
+      { document, documentId: stored.documentId, expectedRevision: 1 },
+      controller.signal,
+    )
+    controller.abort()
+    release?.()
+    await holding
+    await expect(pending).rejects.toThrow()
+    expect((await store.read(stored.documentId)).revision).toBe(1)
+    await expect(store.read(stored.documentId, controller.signal)).rejects.toThrow()
+  })
+
+  test("does not report cancellation after the rename commit point", async () => {
+    const { stored } = await store.write({ document })
+    const controller = new AbortController()
+    const { rename } = await vi.importActual<typeof fs>("node:fs/promises")
+    vi.mocked(fs.rename).mockImplementationOnce(async (...args) => {
+      await rename(...args)
+      controller.abort()
+    })
+    const result = await store.write(
+      { document, documentId: stored.documentId, expectedRevision: 1 },
+      controller.signal,
+    )
+    expect(result.stored.revision).toBe(2)
+    expect((await store.read(stored.documentId)).revision).toBe(2)
+  })
+
+  test("does not create directories for invalid IDs or documents", async () => {
+    await expect(store.read("../outside")).rejects.toThrow()
+    await expect(
+      store.write({ document: { ...document, schemaVersion: 2 } as unknown as CanvasDocument }),
+    ).rejects.toThrow()
+    await expect(fs.stat(join(cwd, ".pi"))).rejects.toThrow()
+    await expect(store.read(randomUUID())).rejects.toThrow()
+  })
+
+  test.each([".pi", ".pi/canvas"])("refuses symlinked storage directory %s", async (relative) => {
+    if (relative.includes("/")) await fs.mkdir(join(cwd, ".pi"))
+    await fs.symlink(outside, join(cwd, relative), "dir")
+    await expect(store.write({ document })).rejects.toThrow("real directories")
+    expect(await fs.readdir(outside)).toEqual([])
+  })
+
+  test("refuses a symlinked artifact ignore without changing its target", async () => {
+    await fs.mkdir(join(cwd, ".pi", "canvas"), { recursive: true })
+    const target = join(outside, "ignore")
+    await fs.writeFile(target, "User data")
+    await fs.symlink(target, join(cwd, ".pi", "canvas", ".gitignore"))
+    await expect(store.write({ document })).rejects.toThrow("regular file")
+    expect(await fs.readFile(target, "utf8")).toBe("User data")
+  })
+
+  test("refuses document symlinks for reads and updates", async () => {
+    const { stored, path } = await store.write({ document })
+    const target = join(outside, "document.json")
+    await fs.rename(path, target)
+    await fs.symlink(target, path)
+    await expect(store.read(stored.documentId)).rejects.toThrow("regular file")
+    await expect(
+      store.write({ document, documentId: stored.documentId, expectedRevision: 1 }),
+    ).rejects.toThrow("regular file")
+    expect(JSON.parse(await fs.readFile(target, "utf8")).revision).toBe(1)
+  })
+
+  test("rejects corrupted, future-version, mismatched and oversized stored files without overwriting them", async () => {
+    const { stored, path } = await store.write({ document })
+    const badFiles = [
+      "{not JSON",
+      JSON.stringify({ ...stored, document: { ...document, schemaVersion: 2 } }),
+      JSON.stringify({ ...stored, documentId: randomUUID() }),
+      JSON.stringify({ ...stored, updatedAt: "not a date" }),
+      " ".repeat(MAX_DOCUMENT_BYTES + 4097),
+    ]
+    for (const contents of badFiles) {
+      await fs.writeFile(path, contents)
+      await expect(store.read(stored.documentId)).rejects.toThrow()
+      await expect(
+        store.write({ document, documentId: stored.documentId, expectedRevision: 1 }),
+      ).rejects.toThrow()
+      expect(await fs.readFile(path, "utf8")).toBe(contents)
+    }
+  })
+})

@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "title": "Process walkthrough: document replacement",
+  "blocks": [
+    {
+      "id": "process-intro",
+      "type": "markdown",
+      "markdown": "# Document replacement process\n\nThis example process shows one successful update and an explicit conflict exit.\nRead the overview first, then follow the input, processing, and completion slides.\nLet $r$ be the stored revision.\n\n$$\nr_{next} = r + 1\n$$\n\nSend the full document with the revision that you read.\n\n```typescript\nconst update = {\n  documentId: \"4e7efb70-6686-4f94-aa51-f97d40abb677\",\n  expectedRevision: 3,\n  document: completeDocument,\n};\n```"
+    },
+    {
+      "id": "process-deck",
+      "type": "diagram-deck",
+      "title": "Overview, start, processing, and end",
+      "slides": [
+        {
+          "id": "process-overview",
+          "title": "Complete process",
+          "mermaid": "flowchart LR\n  Start[\"Start\"] --> Read[\"Read current document\"]\n  Read --> Edit[\"Prepare complete replacement\"]\n  Edit --> Validate[\"Validate document\"]\n  Validate --> Compare{\"Revision matches?\"}\n  Compare -->|Yes| Commit[\"Commit replacement\"]\n  Compare -->|No| Conflict[\"Conflict: read again\"]\n  Conflict --> Read\n  Commit --> Result[\"Return saved revision\"]\n  Result --> End[\"End\"]",
+          "explanationMarkdown": "The process reads, edits, validates, checks the revision, and commits a complete replacement.\nA conflict returns to Read current document instead of overwriting a newer update.\nThe next slides isolate the start, processing, and end stages."
+        },
+        {
+          "id": "process-start",
+          "title": "Input and start",
+          "mermaid": "flowchart LR\n  Start[\"Start\"] --> Read[\"Read current document\"]\n  Read --> Edit[\"Prepare complete replacement\"]",
+          "explanationMarkdown": "Start with the current document and its revision.\nPrepare complete replacement keeps stable block and slide IDs where the content has the same role.\nValidation and persistence are omitted here; they appear in the next slide."
+        },
+        {
+          "id": "process-processing",
+          "title": "Core processing",
+          "mermaid": "flowchart LR\n  Edit[\"Prepare complete replacement\"] --> Validate[\"Validate document\"]\n  Validate --> Compare{\"Revision matches?\"}\n  Compare -->|Yes| Commit[\"Commit replacement\"]\n  Compare -->|No| Conflict[\"Conflict: read again\"]\n  Conflict --> Read[\"Read current document\"]",
+          "explanationMarkdown": "Validate document checks structure and content policy before the replacement is committed.\nRevision matches compares the supplied revision with the current revision in the serialized write operation.\nOn conflict, read again and apply the intended change to the new document.\nThis slide does not show the final response.\n\n```typescript\nif (expectedRevision !== currentRevision) {\n  return { error: \"Read again before retrying\" };\n}\n```"
+        },
+        {
+          "id": "process-end",
+          "title": "Output and end",
+          "mermaid": "flowchart LR\n  Commit[\"Commit replacement\"] --> Result[\"Return saved revision\"]\n  Result --> End[\"End\"]",
+          "explanationMarkdown": "Return saved revision confirms persistence after Commit replacement.\nA saved document is not proof that Mermaid or LaTeX rendered correctly.\nOpen the viewer for a browser check, or report that rendering is unverified.\nThe next revision is $r_{next} = r + 1$."
+        }
+      ]
+    },
+    {
+      "id": "process-note",
+      "type": "markdown",
+      "markdown": "## Failure boundary\n\nA validation error does not commit a replacement.\nA revision conflict requires a new read, not a blind retry.\nThe independent deck below keeps the conflict decision visible while the main deck changes slides."
+    },
+    {
+      "id": "process-conflict",
+      "type": "diagram-deck",
+      "title": "Conflict reminder",
+      "slides": [
+        {
+          "id": "process-conflict-slide",
+          "title": "Conflict recovery",
+          "mermaid": "flowchart LR\n  Conflict[\"Conflict: read again\"] --> Read[\"Read current document\"]\n  Read --> Edit[\"Prepare complete replacement\"]",
+          "explanationMarkdown": "Rebuild the replacement from the new stored document and use its revision.\nDo not discard another writer's change without an explicit decision."
+        }
+      ]
+    }
+  ]
+}

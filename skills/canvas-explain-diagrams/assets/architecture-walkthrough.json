@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "title": "Architecture walkthrough: document service",
+  "blocks": [
+    {
+      "id": "architecture-intro",
+      "type": "markdown",
+      "markdown": "# Document service architecture\n\nThis example service is a teaching model, not a source-verified map of this repository.\nFollow the same Client, Document API, and Document Store from the overview to the details.\nThe request latency is $T = T_{api} + T_{store}$.\n\n$$\nT_{store} = T_{queue} + T_{write}\n$$\n\nThe client sends a complete document, not a patch.\n\n```typescript\nconst request = { title: \"System guide\", blocks: [] };\nawait client.replaceDocument(request);\n```"
+    },
+    {
+      "id": "architecture-deck",
+      "type": "diagram-deck",
+      "title": "Overview, API, and storage",
+      "slides": [
+        {
+          "id": "architecture-overview",
+          "title": "System overview",
+          "mermaid": "flowchart LR\n  Client[\"Client\"] --> Api[\"Document API — 文件 API\"]\n  subgraph Backend[\"Example backend\"]\n    Api --> Store[\"Document Store — 工作區文件儲存與版本資料\"]\n  end",
+          "explanationMarkdown": "The Client submits a document to the Document API.\nThe Document Store owns persistence.\nThis overview omits validation and storage steps; the next slides add them without renaming these components."
+        },
+        {
+          "id": "architecture-api",
+          "title": "Document API detail",
+          "mermaid": "flowchart LR\n  Client[\"Client\"] --> Api[\"Document API — 文件 API\"]\n  subgraph ApiDetail[\"Document API internals\"]\n    Api --> Validator[\"Request Validator — check the complete document before any storage operation\"]\n    Validator --> Handler[\"Request Handler\"]\n  end\n  Handler --> Store[\"Document Store — 工作區文件儲存與版本資料\"]",
+          "explanationMarkdown": "The Document API now contains a Request Validator and a Request Handler.\nThe long validator label and the Chinese API and storage labels are rendering fixtures.\nThe Document Store remains one node here; the next slide expands its write path.\nThe example assumes validation runs before persistence."
+        },
+        {
+          "id": "architecture-storage",
+          "title": "Document Store detail",
+          "mermaid": "flowchart LR\n  Api[\"Document API — 文件 API\"] --> Store[\"Document Store — 工作區文件儲存與版本資料\"]\n  subgraph StorageDetail[\"Document Store internals\"]\n    Store --> Queue[\"Write Queue\"]\n    Queue --> Revision[\"Revision Check\"]\n    Revision --> Temp[\"Temporary JSON File\"]\n    Temp --> Commit[\"Atomic Rename\"]\n    Commit --> Files[\"Document Files\"]\n  end",
+          "explanationMarkdown": "The Document Store expands into an example serialized write path.\nThe Revision Check rejects a stale update before the Temporary JSON File replaces a Document File.\nThe Client and API validation internals are omitted to keep this slide about persistence.\nFor an accepted replacement, $r_{new} = r_{old} + 1$.\n\n```typescript\nif (expectedRevision !== currentRevision) {\n  throw new Error(\"Revision conflict\");\n}\n```"
+        }
+      ]
+    },
+    {
+      "id": "architecture-context",
+      "type": "markdown",
+      "markdown": "## Reading the diagrams\n\nNode IDs and labels stay the same when a component appears again.\nSubgraphs group responsibilities; they do not provide interactive expansion.\nThe single-slide deck below is a separate reading aid, not another step in the main walkthrough."
+    },
+    {
+      "id": "architecture-boundary",
+      "type": "diagram-deck",
+      "title": "Boundary reminder",
+      "slides": [
+        {
+          "id": "architecture-boundary-slide",
+          "title": "Client and service boundary",
+          "mermaid": "flowchart LR\n  Client[\"Client\"] --> Api[\"Document API — 文件 API\"]",
+          "explanationMarkdown": "Only the Client and Document API are shown.\nUse this independent deck to discuss the public boundary while keeping the main deck on a storage detail slide."
+        }
+      ]
+    }
+  ]
+}
