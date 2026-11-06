@@ -112,6 +112,75 @@ button:disabled {
   min-height: 26rem;
   overflow-anchor: none;
 }
+.deck-carousel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+}
+.deck-carousel-multiple {
+  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  gap: 0.5rem;
+}
+.deck-viewport {
+  min-width: 0;
+}
+.deck-arrow {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border-radius: 50%;
+  color: #2167a4;
+  border-color: #b1c4d4;
+  box-shadow: 0 1px 3px #202a3510;
+}
+.deck-arrow:disabled {
+  opacity: 0.35;
+  box-shadow: none;
+}
+.deck-arrow-icon {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-right: 0.2rem;
+}
+.deck-arrow-previous .deck-arrow-icon {
+  transform: rotate(-135deg);
+  margin-right: 0;
+  margin-left: 0.2rem;
+}
+.slide-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-width: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+.slide-dot {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.slide-dot span {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1.5px solid #9ca9b3;
+  border-radius: 50%;
+}
+.slide-dot[aria-current="step"] span {
+  border-color: #2167a4;
+  background: #2167a4;
+}
 .diagram {
   min-height: 17rem;
   display: grid;
@@ -201,6 +270,9 @@ blockquote {
   }
   .deck-navigation {
     gap: 0.4rem;
+  }
+  .deck-carousel-multiple {
+    gap: 0.25rem;
   }
   .deck-navigation label {
     display: none;
