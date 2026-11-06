@@ -68,7 +68,11 @@ Use `canvas_write` to save each bundled asset, then `canvas_open` to obtain curr
 - [ ] Confirm all architecture and process slides render with their explanations.
 - [ ] Confirm the diagrams have a readable hand-drawn style, arrows, Chinese labels, and long labels.
 - [ ] Confirm prose, inline/display math, and code remain readable at narrow and desktop widths.
-- [ ] Change slides by side arrows, position dots, title selection, and left/right keys while a deck has focus.
+- [ ] Change slides by the bottom arrows, labelled position dots, and Left/Right keys while a deck has focus.
+- [ ] Confirm the compact toolbar, single slide title, bounded graph, and nearby explanation are comfortable to read.
+- [ ] Compare initial Fit with Reset zoom; confirm large graphs remain accessible through zoom and dragging.
+- [ ] Check native browser fullscreen, in-page fallback, Escape, and focus restoration on the target browser.
+- [ ] Check document scrolling and pointer behavior on any required physical touch devices; pinch zoom is not implemented.
 - [ ] Confirm two decks retain independent positions and the single-slide deck has no unnecessary navigation.
 - [ ] Update a document and confirm stable slide IDs retain the selected slide.
 - [ ] Delete the selected slide and confirm a nearby surviving slide is selected.
