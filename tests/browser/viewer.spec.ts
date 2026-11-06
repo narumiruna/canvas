@@ -184,6 +184,60 @@ test("decks switch independently with focused keyboard controls and preserve scr
   await expect(first).toHaveAttribute("data-slide-id", "end")
 })
 
+for (const width of [390, 1280]) {
+  test(`carousel arrows and dots navigate independently at ${width}px`, async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width, height: 960 })
+    await page.goto((await save(request, documentFixture())).url)
+    const first = page.locator('[data-block-id="first"]')
+    const second = page.locator('[data-block-id="second"]')
+    await rendered(first)
+    const previous = first.getByRole("button", { name: "Previous slide" })
+    const next = first.getByRole("button", { name: "Next slide" })
+    const viewport = first.locator(".deck-viewport")
+    const dots = first.locator(".slide-pagination")
+    await expect(previous).toBeDisabled()
+    await expect(next).toBeEnabled()
+    await expect(first.locator(".deck-arrow-icon")).toHaveCount(2)
+    await expect(dots.getByRole("button")).toHaveCount(3)
+    await expect(dots.getByRole("button", { name: "Slide 1: Overview" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    )
+    await expect(next).toHaveAttribute("aria-controls", (await viewport.getAttribute("id")) ?? "")
+    const previousBox = await previous.boundingBox()
+    const nextBox = await next.boundingBox()
+    const viewportBox = await viewport.boundingBox()
+    if (!previousBox || !nextBox || !viewportBox) throw new Error("Missing carousel layout")
+    expect(previousBox.width).toBeGreaterThanOrEqual(44)
+    expect(previousBox.height).toBeGreaterThanOrEqual(44)
+    expect(nextBox.width).toBeGreaterThanOrEqual(44)
+    expect(previousBox.x + previousBox.width).toBeLessThanOrEqual(viewportBox.x)
+    expect(nextBox.x).toBeGreaterThanOrEqual(viewportBox.x + viewportBox.width)
+    await next.click()
+    await rendered(first)
+    await expect(first).toHaveAttribute("data-slide-id", "detail")
+    await expect(previous).toBeEnabled()
+    await expect(dots.getByRole("button", { name: "Slide 2: Detail" })).toHaveAttribute(
+      "aria-current",
+      "step",
+    )
+    await expect(second).toHaveAttribute("data-slide-id", "overview")
+    await dots.getByRole("button", { name: "Slide 3: End" }).click()
+    await rendered(first)
+    await expect(first).toHaveAttribute("data-slide-id", "end")
+    await expect(next).toBeDisabled()
+    await expect(dots.locator('[aria-current="step"]')).toHaveCount(1)
+    await previous.click()
+    await expect(first).toHaveAttribute("data-slide-id", "detail")
+    await dots.getByRole("button", { name: "Slide 1: Overview" }).click()
+    await expect(previous).toBeDisabled()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}
+
 test("conditional polling keeps stable selection and chooses the nearest old slide after deletion", async ({
   page,
   request,
@@ -343,7 +397,10 @@ for (const name of ["architecture-walkthrough", "process-walkthrough"]) {
     for (const block of document.blocks) {
       if (block.type !== "diagram-deck") continue
       const deck = page.locator(`[data-block-id="${block.id}"]`)
-      if (block.slides.length === 1) await expect(deck.getByRole("navigation")).toHaveCount(0)
+      if (block.slides.length === 1) {
+        await expect(deck.getByRole("navigation")).toHaveCount(0)
+        await expect(deck.locator(".deck-arrow, .slide-pagination")).toHaveCount(0)
+      }
       for (const slide of block.slides) {
         if (block.slides.length > 1) await deck.getByRole("combobox").selectOption(slide.id)
         await rendered(deck)

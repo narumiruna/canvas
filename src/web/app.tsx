@@ -106,6 +106,7 @@ function currentSlide(deck: DiagramDeck, selection: Selection) {
 function Deck({ deck }: { deck: DiagramDeck }) {
   const titleId = useId()
   const selectId = useId()
+  const viewportId = useId()
   const [selection, setSelection] = useState<Selection>(() => ({
     id: deck.slides[0].id,
     ids: deck.slides.map((slide) => slide.id),
@@ -113,6 +114,7 @@ function Deck({ deck }: { deck: DiagramDeck }) {
   const active = currentSlide(deck, selection)
   const index = deck.slides.indexOf(active)
   const ids = deck.slides.map((slide) => slide.id)
+  const multiple = deck.slides.length > 1
   useEffect(() => {
     setSelection((previous) => {
       const selected = currentSlide(deck, previous)
@@ -148,16 +150,8 @@ function Deck({ deck }: { deck: DiagramDeck }) {
       }}
     >
       <h2 id={titleId}>{deck.title}</h2>
-      {deck.slides.length > 1 && (
+      {multiple && (
         <nav className="deck-navigation" aria-label={`${deck.title} slides`}>
-          <button
-            type="button"
-            aria-label="Previous slide"
-            disabled={index === 0}
-            onClick={() => move(-1)}
-          >
-            Previous
-          </button>
           <label htmlFor={selectId}>Slide</label>
           <select id={selectId} value={active.id} onChange={(event) => select(event.target.value)}>
             {deck.slides.map((slide) => (
@@ -169,19 +163,59 @@ function Deck({ deck }: { deck: DiagramDeck }) {
           <span className="slide-count" aria-live="polite">
             {index + 1} / {deck.slides.length}
           </span>
-          <button
-            type="button"
-            aria-label="Next slide"
-            disabled={index === deck.slides.length - 1}
-            onClick={() => move(1)}
-          >
-            Next
-          </button>
         </nav>
       )}
       <div className="slide-content">
         <h3>{active.title}</h3>
-        <Diagram source={active.mermaid} blockId={deck.id} slideId={active.id} />
+        <div className={`deck-carousel${multiple ? " deck-carousel-multiple" : ""}`}>
+          {multiple && (
+            <button
+              type="button"
+              className="deck-arrow deck-arrow-previous"
+              aria-label="Previous slide"
+              aria-controls={viewportId}
+              title="Previous slide (←)"
+              disabled={index === 0}
+              onClick={() => move(-1)}
+            >
+              <span className="deck-arrow-icon" aria-hidden="true" />
+            </button>
+          )}
+          <div className="deck-viewport" id={viewportId}>
+            <Diagram source={active.mermaid} blockId={deck.id} slideId={active.id} />
+          </div>
+          {multiple && (
+            <button
+              type="button"
+              className="deck-arrow deck-arrow-next"
+              aria-label="Next slide"
+              aria-controls={viewportId}
+              title="Next slide (→)"
+              disabled={index === deck.slides.length - 1}
+              onClick={() => move(1)}
+            >
+              <span className="deck-arrow-icon" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {multiple && (
+          <fieldset className="slide-pagination" aria-label={`${deck.title} slide positions`}>
+            {deck.slides.map((slide, position) => (
+              <button
+                key={slide.id}
+                type="button"
+                className="slide-dot"
+                aria-label={`Slide ${position + 1}: ${slide.title}`}
+                aria-controls={viewportId}
+                aria-current={slide.id === active.id ? "step" : undefined}
+                title={`Slide ${position + 1}: ${slide.title}`}
+                onClick={() => select(slide.id)}
+              >
+                <span aria-hidden="true" />
+              </button>
+            ))}
+          </fieldset>
+        )}
         <Markdown
           markdown={active.explanationMarkdown}
           context={`Block ${deck.id}, slide ${active.id}`}

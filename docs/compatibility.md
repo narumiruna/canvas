@@ -30,7 +30,8 @@ Local verification produced these results:
 
 - `npm run ci` passed on Node.js `22.19.0` and `26.8.2`, including formatting/lint checks, 93 of 93 Vitest tests across five files, and production builds.
 - `npx vitest run tests/skill.test.ts` passed 15 of 15 tests independently on Node.js `26.8.2`.
-- `npm run test:browser` passed 14 of 14 Chromium tests on both Node.js `22.19.0` and `26.8.2`.
+- `npm run test:browser` passed 16 of 16 Chromium tests on both Node.js `22.19.0` and `26.8.2`.
+- Carousel checks cover 44-pixel side arrows, clickable position dots, boundary states, independent decks, and hidden single-slide controls at desktop and narrow widths.
 - `npm run test:package` passed actual host/resource discovery and isolated installation checks on Node.js `22.19.0` and `26.8.2` in `scripts/package-smoke.ts`.
   - `DefaultResourceLoader` discovers the bundled skill.
   - `session.followUp('/skill:canvas-explain-diagrams ...')` expands the skill without a model call.
