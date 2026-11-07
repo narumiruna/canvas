@@ -2,7 +2,7 @@ import { readdir, readFile, realpath } from "node:fs/promises"
 import { dirname, isAbsolute, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
-import { validateDocument } from "../src/document.js"
+import { type DiagramDeck, validateDocument } from "../src/document.js"
 
 const skillRoot = fileURLToPath(new URL("../skills/canvas-explain-diagrams/", import.meta.url))
 const skillFile = resolve(skillRoot, "SKILL.md")
@@ -19,6 +19,71 @@ function localLinks(markdown: string) {
 function isWithinSkill(path: string) {
   const local = relative(skillRoot, path)
   return local !== ".." && !local.startsWith("../") && !isAbsolute(local)
+}
+
+// These assertions describe the bundled fixtures, not arbitrary Mermaid or narrative quality.
+function expectArchitectureDetails(deck: DiagramDeck) {
+  const [overview, api, storage] = deck.slides
+  for (const slide of [overview, api, storage]) {
+    expect(slide.mermaid).toMatch(/(?:^|\s)Api\["Document API — 文件 API"\]/)
+    expect(slide.mermaid).toMatch(/(?:^|\s)Store\["Document Store — 工作區文件儲存與版本資料"\]/)
+  }
+  for (const edge of ["Api --> Validator[", "Validator --> Handler[", "Handler --> Store["]) {
+    expect(api.mermaid).toContain(edge)
+  }
+  for (const edge of [
+    'Api["Document API — 文件 API"] --> Store[',
+    "Store --> Queue[",
+    "Queue --> Revision[",
+    "Revision --> Temp[",
+    "Temp --> Commit[",
+    "Commit --> Files[",
+  ]) {
+    expect(storage.mermaid).toContain(edge)
+  }
+  for (const name of ["Document API", "Request Validator", "Request Handler", "Document Store"]) {
+    expect(api.explanationMarkdown).toContain(name)
+  }
+  for (const name of ["Document Store", "Write Queue", "Revision Check", "Atomic Rename"]) {
+    expect(storage.explanationMarkdown).toContain(name)
+  }
+}
+
+function processNodes(source: string) {
+  return new Map(
+    [...source.matchAll(/(\w+)(?:\[|\{)"([^"]+)"(?:\]|\})/g)].map((match) => [match[1], match[2]]),
+  )
+}
+
+function expectProcessStages(deck: DiagramDeck) {
+  const [overview, start, processing, end] = deck.slides
+  const overviewNodes = processNodes(overview.mermaid)
+  const stages = [
+    { slide: start, nodes: ["Start", "Read", "Edit"], explanation: ["Read", "Edit", "Validate"] },
+    {
+      slide: processing,
+      nodes: ["Edit", "Validate", "Compare", "Commit", "Conflict", "Read"],
+      explanation: ["Edit", "Validate", "Read", "Commit", "Result"],
+    },
+    { slide: end, nodes: ["Commit", "Result", "End"], explanation: ["Commit", "Result"] },
+  ]
+  for (const { slide, nodes, explanation } of stages) {
+    const actual = processNodes(slide.mermaid)
+    expect([...actual.keys()].sort()).toEqual([...nodes].sort())
+    for (const [id, label] of actual) expect(label).toBe(overviewNodes.get(id))
+    for (const id of explanation) {
+      expect(slide.explanationMarkdown).toContain(overviewNodes.get(id))
+    }
+  }
+  expect(start.mermaid).toContain('Start["Start"] --> Read[')
+  expect(start.mermaid).toContain("Read --> Edit[")
+  expect(processing.mermaid).toContain('Edit["Prepare complete replacement"] --> Validate[')
+  expect(processing.mermaid).toContain("Validate --> Compare{")
+  expect(processing.mermaid).toContain("Compare -->|Yes| Commit[")
+  expect(processing.mermaid).toContain("Compare -->|No| Conflict[")
+  expect(processing.mermaid).toContain("Conflict --> Read[")
+  expect(end.mermaid).toContain('Commit["Commit replacement"] --> Result[')
+  expect(end.mermaid).toContain("Result --> End[")
 }
 
 describe("bundled Canvas skill", () => {
@@ -104,11 +169,8 @@ describe("bundled Canvas skill", () => {
       "architecture-api",
       "architecture-storage",
     ])
-    for (const slide of deck.slides) {
-      expect(slide.mermaid).toContain('Api["Document API — 文件 API"]')
-      expect(slide.mermaid).toContain('Store["Document Store — 工作區文件儲存與版本資料"]')
-      expect(slide.mermaid).toContain("subgraph")
-    }
+    expectArchitectureDetails(deck)
+    for (const slide of deck.slides) expect(slide.mermaid).toContain("subgraph")
     expect(deck.slides[1].mermaid).toContain(
       "Request Validator — check the complete document before any storage operation",
     )
@@ -123,18 +185,67 @@ describe("bundled Canvas skill", () => {
       "process-processing",
       "process-end",
     ])
-    const overviewNodes = new Map(
-      [...deck.slides[0].mermaid.matchAll(/(\w+)(?:\[|\{)"([^"]+)"(?:\]|\})/g)].map((match) => [
-        match[1],
-        match[2],
-      ]),
-    )
-    for (const slide of deck.slides.slice(1)) {
-      for (const node of slide.mermaid.matchAll(/(\w+)(?:\[|\{)"([^"]+)"(?:\]|\})/g)) {
-        expect(overviewNodes.get(node[1])).toBe(node[2])
-      }
-    }
+    expectProcessStages(deck)
   })
+
+  test.each([
+    { asset: "architecture-walkthrough.json", index: 1 },
+    { asset: "architecture-walkthrough.json", index: 2 },
+    { asset: "process-walkthrough.json", index: 1 },
+    { asset: "process-walkthrough.json", index: 2 },
+    { asset: "process-walkthrough.json", index: 3 },
+  ] as const)(
+    "fixture checks catch a duplicate overview in $asset slide $index",
+    async ({ asset, index }) => {
+      const fixture = await loadFixture(asset)
+      const deck = fixture.blocks.find((block: { type: string }) => block.type === "diagram-deck")
+      deck.slides[index].mermaid = deck.slides[0].mermaid
+      expect(() => validateDocument(fixture)).not.toThrow()
+      expect(() =>
+        asset === "architecture-walkthrough.json"
+          ? expectArchitectureDetails(deck)
+          : expectProcessStages(deck),
+      ).toThrow()
+    },
+  )
+
+  test.each([
+    {
+      asset: "architecture-walkthrough.json",
+      index: 1,
+      from: "Handler --> Store",
+      to: "Handler --> Elsewhere",
+    },
+    { asset: "architecture-walkthrough.json", index: 2, from: "Api[", to: "OtherApi[" },
+    { asset: "process-walkthrough.json", index: 2, from: "Edit[", to: "OtherEdit[" },
+    { asset: "process-walkthrough.json", index: 3, from: "Commit[", to: "OtherCommit[" },
+    {
+      asset: "process-walkthrough.json",
+      index: 2,
+      from: "Conflict --> Read[",
+      to: "Conflict --> Commit[",
+    },
+    {
+      asset: "process-walkthrough.json",
+      index: 2,
+      from: 'Edit["Prepare complete replacement"]',
+      to: 'Edit["Unrelated operation"]',
+    },
+  ] as const)(
+    "fixture checks catch broken $from continuity in $asset",
+    async ({ asset, index, from, to }) => {
+      const fixture = await loadFixture(asset)
+      const deck = fixture.blocks.find((block: { type: string }) => block.type === "diagram-deck")
+      expect(deck.slides[index].mermaid).toContain(from)
+      deck.slides[index].mermaid = deck.slides[index].mermaid.replace(from, to)
+      expect(() => validateDocument(fixture)).not.toThrow()
+      expect(() =>
+        asset === "architecture-walkthrough.json"
+          ? expectArchitectureDetails(deck)
+          : expectProcessStages(deck),
+      ).toThrow()
+    },
+  )
 
   test.each([
     "sequenceDiagram\nAlice->>Bob: unsupported",

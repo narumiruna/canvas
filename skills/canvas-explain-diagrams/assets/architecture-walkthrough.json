@@ -16,19 +16,19 @@
           "id": "architecture-overview",
           "title": "System overview",
           "mermaid": "flowchart LR\n  Client[\"Client\"] --> Api[\"Document API — 文件 API\"]\n  subgraph Backend[\"Example backend\"]\n    Api --> Store[\"Document Store — 工作區文件儲存與版本資料\"]\n  end",
-          "explanationMarkdown": "The Client submits a document to the Document API.\nThe Document Store owns persistence.\nThis overview omits validation and storage steps; the next slides add them without renaming these components."
+          "explanationMarkdown": "This deck explains how a document reaches persistent storage.\nThe Client submits a document to the Document API, and the Document Store owns persistence inside the example backend.\nThis overview establishes the request path but omits validation and storage internals.\nThe next slide expands the Document API before following its request into the Document Store."
         },
         {
           "id": "architecture-api",
           "title": "Document API detail",
           "mermaid": "flowchart LR\n  Client[\"Client\"] --> Api[\"Document API — 文件 API\"]\n  subgraph ApiDetail[\"Document API internals\"]\n    Api --> Validator[\"Request Validator — check the complete document before any storage operation\"]\n    Validator --> Handler[\"Request Handler\"]\n  end\n  Handler --> Store[\"Document Store — 工作區文件儲存與版本資料\"]",
-          "explanationMarkdown": "The Document API now contains a Request Validator and a Request Handler.\nThe long validator label and the Chinese API and storage labels are rendering fixtures.\nThe Document Store remains one node here; the next slide expands its write path.\nThe example assumes validation runs before persistence."
+          "explanationMarkdown": "The Document API from the overview now expands into a Request Validator and a Request Handler.\nThis slide explains the example's assumption that validation runs before persistence.\nThe Request Handler passes the validated request to the Document Store, which remains one node here and becomes the focus of the next slide.\nThe long validator label and the Chinese API and storage labels are rendering fixtures."
         },
         {
           "id": "architecture-storage",
           "title": "Document Store detail",
           "mermaid": "flowchart LR\n  Api[\"Document API — 文件 API\"] --> Store[\"Document Store — 工作區文件儲存與版本資料\"]\n  subgraph StorageDetail[\"Document Store internals\"]\n    Store --> Queue[\"Write Queue\"]\n    Queue --> Revision[\"Revision Check\"]\n    Revision --> Temp[\"Temporary JSON File\"]\n    Temp --> Commit[\"Atomic Rename\"]\n    Commit --> Files[\"Document Files\"]\n  end",
-          "explanationMarkdown": "The Document Store expands into an example serialized write path.\nThe Revision Check rejects a stale update before the Temporary JSON File replaces a Document File.\nThe Client and API validation internals are omitted to keep this slide about persistence.\nFor an accepted replacement, $r_{new} = r_{old} + 1$.\n\n```typescript\nif (expectedRevision !== currentRevision) {\n  throw new Error(\"Revision conflict\");\n}\n```"
+          "explanationMarkdown": "The preceding slide hands the validated request to the Document Store; this slide expands that same component into its serialized write path.\nThe Write Queue orders writes, and the Revision Check rejects a stale update before persistence.\nAtomic Rename commits the Temporary JSON File as a Document File, completing the path from the Document API to persistent storage.\nThe Client and API validation internals are omitted to keep this slide about persistence.\nFor an accepted replacement, $r_{new} = r_{old} + 1$.\n\n```typescript\nif (expectedRevision !== currentRevision) {\n  throw new Error(\"Revision conflict\");\n}\n```"
         }
       ]
     },
