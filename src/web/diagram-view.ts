@@ -142,6 +142,18 @@ export function createDiagramView(
       pendingFit = true
     }
     const box = diagram?.viewBox.baseVal
+    if (box && [box.width, box.height, viewport.clientWidth - inset * 2].every(positive)) {
+      // Inline height depends only on natural SVG size and available width.
+      // CSS bounds it and lets fullscreen fill the screen. Camera changes and
+      // ResizeObserver height notifications cannot feed back into this size.
+      const inlineScale = Math.min(1, (viewport.clientWidth - inset * 2) / box.width)
+      viewport.style.setProperty(
+        "--diagram-content-height",
+        `${box.height * inlineScale + inset * 2}px`,
+      )
+    } else {
+      viewport.style.removeProperty("--diagram-content-height")
+    }
     if (!box || !positive(box.width) || !positive(box.height) || !visible()) {
       stopPan()
       ready = false

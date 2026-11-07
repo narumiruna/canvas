@@ -144,10 +144,10 @@ function Deck({ deck }: { deck: DiagramDeck }) {
     >
       <header className="deck-heading">
         <div>
-          <p className="deck-context">
-            {deck.title === active.title ? "Diagram Deck" : deck.title}
-          </p>
-          <h2 id={titleId}>{active.title}</h2>
+          <h2 id={titleId}>{deck.title}</h2>
+          <h3 className={deck.title === active.title ? "visually-hidden" : undefined}>
+            {active.title}
+          </h3>
         </div>
         <span className="deck-kind">Mermaid</span>
       </header>
@@ -205,6 +205,7 @@ function Deck({ deck }: { deck: DiagramDeck }) {
           <Markdown
             markdown={active.explanationMarkdown}
             context={`Block ${deck.id}, slide ${active.id}`}
+            scope="explanation"
           />
         </div>
       </div>

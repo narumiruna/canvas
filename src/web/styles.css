@@ -39,9 +39,12 @@ body {
 }
 h1,
 h2,
-h3 {
+h3,
+h4,
+h5,
+h6 {
   line-height: 1.25;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 h1 {
   font-size: 2rem;
@@ -72,15 +75,25 @@ section {
   padding: 1rem 1.25rem;
   border-bottom: 1px solid #e5ebf3;
 }
+.deck-heading > div {
+  min-width: 0;
+}
 .deck-heading h2 {
   margin: 0;
-  font-size: 1.1rem;
 }
-.deck-context {
-  margin: 0 0 0.25rem;
-  color: #718199;
-  font-size: 0.7rem;
-  letter-spacing: 0.04em;
+.deck-heading h3:not(.visually-hidden) {
+  margin: 0.35rem 0 0;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 .deck-kind {
   flex-shrink: 0;
@@ -185,11 +198,9 @@ button:disabled {
   margin: 0 1.25rem;
   padding: 0.8rem 0 1rem;
   border-top: 1px solid #e8edf4;
-  color: #53647c;
-  font-size: 0.9rem;
 }
 .diagram {
-  --diagram-height: clamp(15rem, 38vh, 22rem);
+  --diagram-height: clamp(15rem, 70vh, 36rem);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -272,8 +283,9 @@ button:disabled {
 }
 .diagram-viewport {
   position: relative;
-  height: var(--diagram-height);
+  height: clamp(6rem, var(--diagram-content-height, var(--diagram-height)), var(--diagram-height));
   min-height: 0;
+  margin: 0;
   overflow: hidden;
   padding: 0;
   cursor: grab;
@@ -352,7 +364,7 @@ button:disabled {
   font-size: 0.75rem;
 }
 .markdown {
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 .markdown > :first-child {
   margin-top: 0.8rem;

@@ -21,7 +21,8 @@ A successful explicit invocation does not prove reliable automatic selection.
 > Start with a system overview, then explain the API, then the storage write path.
 > Keep the Client, Document API, and Document Store names and node IDs consistent.
 > Include prose, inline and display LaTeX for request latency, and a short fenced TypeScript example.
-> Use a subgraph, one Chinese label, and one long label to check layout.
+> Use a subgraph, one Chinese label, and short diagram labels; put detailed qualifications in Markdown.
+> Review the complete article outline before the slide sequence and inspect every slide at desktop and 390px.
 > Save the document and give me a local viewer link without launching a browser.
 > Label assumptions and tell me whether rendering was checked.
 
@@ -32,7 +33,9 @@ Expected assertions:
 - [ ] A main deck has overview → API → storage slides, each with a nonempty explanation.
 - [ ] Each detail slide names its connection to the preceding context and explains a distinct part of the save path.
 - [ ] Repeated components keep the same node IDs, names, and meanings.
-- [ ] Prose, inline/display LaTeX, fenced TypeScript, Chinese text, a long label, and a subgraph are present.
+- [ ] Prose, inline/display LaTeX, fenced TypeScript, Chinese text, short diagram labels, and a subgraph are present.
+- [ ] The article has one page H1, stable H2 chapter headings, and subordinate H3 slide titles.
+- [ ] Terms are defined before use and the conclusion answers each main question.
 - [ ] Assumptions are marked as a teaching model instead of source-verified implementation facts.
 - [ ] Creation omits `documentId` and `expectedRevision`, and the result reports the generated ID and revision.
 - [ ] Opening uses a supported TUI or RPC session and returns a loopback URL without an OS-browser launch.
@@ -62,13 +65,42 @@ Expected assertions:
 - [ ] No direct storage-file edits or unsupported content occur.
 - [ ] The final response reports the saved revision, viewer status, and rendering evidence separately.
 
+## Article structure and visual review
+
+Review the complete article before checking individual deck transitions.
+Check its heading outline, prerequisite concepts, first definitions, repeated text, and conclusion coverage.
+The document title owns H1, deck titles remain H2 during navigation, and current slide titles use H3.
+Markdown explanations must not introduce competing chapter headings.
+
+`tests/browser/article-review.spec.ts` covers both bundled examples and the source-linked Agent Substrate regression fixture in `tests/fixtures/agent-substrate.json`.
+It captures the complete initial and final article and every slide at 1440px and 390px.
+Each teaching slide must have initial fitted SVG labels of at least 12 CSS px, body explanations of at least 16px, no exposed emphasis delimiters, no page overflow, and at most 64px of unused frame height.
+These are finite regression checks, not a claim that arbitrary diagrams meet the same target.
+Large-graph and long-label stress tests remain separate from the teaching examples.
+
+The original Agent Substrate review found two H1 headings, changing H2 chapter names, default fitted labels of about 7–11px on desktop and 2–4px at 390px, exposed CJK emphasis markers, and a broken-word glossary table.
+The revised fixture uses a single title, a short concept list, compact diagrams, all three egress outcomes, and a conclusion covering capacity, state, and security.
+It preserves explicit suspension and the asynchronous snapshot upload failure window.
+No stored document schema or tool contract changes are required.
+
+### Reviewer handoff
+
+The documentation reviewer can use the CI `browser-evidence-node-*` artifacts or the local `test-results/article-review-*/` captures after the checks pass.
+Inspect complete pages and every slide, not only SVG presence or the initial position.
+Assess text comfort, hierarchy, diagram meaning, and comprehension at both recorded widths.
+The expected result is a readable article with stable sections and source-supported claims.
+Human comprehension, subjective visual acceptance, and physical touch-device behavior remain unverified by these agent checks.
+This review is not an additional prerequisite for closing the coding plan or opening the PR.
+Existing release authorization restrictions remain unchanged.
+
 ## Deck continuity review
 
 The user or documentation reviewer can perform this optional comprehension review after the updated examples pass the automated checks.
 Read each main deck in order and identify its main question, the connection at each transition, and the information each slide adds.
 The expected result is a connected explanation with no unrelated or redundant slides.
 
-The bundled examples provide these review references:
+The bundled examples define API and Store as short labels for Document API and Document Store, and Read/Edit as process steps.
+They provide these review references:
 
 | Slide                 | Connection                                                      | Contribution                                                                                  |
 | --------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -96,11 +128,14 @@ Paid model evaluations and release operations still require the authorizations s
 Run a built package in a persistent Pi TUI or RPC session.
 Use `sketchbook_write` to save each bundled asset, then `sketchbook_open` to obtain current URLs.
 
-- [ ] Confirm all architecture and process slides render with their explanations.
-- [ ] Confirm the diagrams have a readable hand-drawn style, arrows, Chinese labels, and long labels.
-- [ ] Confirm prose, inline/display math, and code remain readable at narrow and desktop widths.
+- [ ] Review the entire article outline and confirm one page H1, stable H2 chapter names, and H3 slide titles.
+- [ ] Confirm all architecture, process, and Agent Substrate slides render with their explanations.
+- [ ] Confirm the teaching diagrams have readable default labels, arrows, Chinese text, and a hand-drawn style.
+- [ ] Check long-label stress cases separately; they are not examples of suitable teaching layouts.
+- [ ] Confirm prose, inline/display math, code, and technical names remain readable at 390px and desktop widths.
+- [ ] Confirm Markdown emphasis renders without exposing literal delimiters.
 - [ ] Change slides by the bottom arrows, labelled position dots, and Left/Right keys while a deck has focus.
-- [ ] Confirm the compact toolbar, single slide title, bounded graph, and nearby explanation are comfortable to read.
+- [ ] Confirm the stable chapter title, current slide title, compact toolbar, content-sized bounded graph, and nearby explanation are comfortable to read.
 - [ ] Compare initial Fit with Reset zoom; confirm large graphs remain accessible through zoom and dragging.
 - [ ] Check native browser fullscreen, in-page fallback, Escape, and focus restoration on the target browser.
 - [ ] Check document scrolling and pointer behavior on any required physical touch devices; pinch zoom is not implemented.
