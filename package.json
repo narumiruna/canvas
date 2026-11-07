@@ -40,7 +40,7 @@
     "test:package": "tsx scripts/package-smoke.ts",
     "ci": "npm run check && npm test && npm run build",
     "changeset": "changeset",
-    "release": "npm run build && changeset publish",
+    "release": "npm run build && changeset git-tag",
     "prepare": "husky"
   },
   "overrides": {

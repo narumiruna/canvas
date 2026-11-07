@@ -176,18 +176,20 @@ Existing model-cost and release-authorization restrictions remain in force.
 
 ## Package-owner handoff
 
-The package metadata now names `narumiruna/sketchbook`; the source rename does not rename the GitHub repository or change checkout remotes.
+The package metadata names `narumiruna/sketchbook`.
+The release workflow runs on pushes to `main` and manual dispatch.
+Changesets creates version pull requests; after a version pull request is merged, the release script builds the package and creates version tags.
+The action pushes new tags and creates GitHub Releases from `CHANGELOG.md`.
+It does not publish packages to npmjs or attach build assets to GitHub Releases.
 
-1. Rename the GitHub repository to `narumiruna/sketchbook` and update checkout remotes after that owner action.
-   - Confirm the repository URL in `package.json` resolves before release.
-   - Confirm availability and ownership of the npm name `pi-sketchbook` before publication.
-2. Configure npm trusted publishing for the intended repository and `release.yml`.
-   - Confirm GitHub Actions has the required pull-request permissions.
-   - Review the existing release workflow's `PAT_TOKEN` requirement and supply an appropriate owner-managed credential or approved replacement.
+1. Confirm the repository URL in `package.json` resolves before release.
+2. Confirm GitHub Actions has the required repository and pull-request permissions.
+   - Review the release workflow's `PAT_TOKEN` requirement and supply an appropriate owner-managed credential or approved replacement.
    - Never provide secrets in chat, documents, example assets, or commits.
 3. Review CI, isolated local/tarball installation evidence, package contents, license, and dependency audit.
-4. Obtain explicit release authorization before publishing, creating or pushing a release tag, or dispatching a release workflow.
+4. Obtain explicit release authorization before merging a version pull request, creating or pushing a release tag, or dispatching the release workflow.
 
-The implementation does not verify registry ownership or trusted-publisher permissions.
+A repeated run skips existing tags. If tag creation succeeds but GitHub Release creation fails, the owner must repair the missing GitHub Release; a repeated run does not create it.
+No npm credentials or trusted-publisher setup are required for this release flow.
 The provider/account owner controls authorization for real-model testing.
 The user controls visual and comprehension acceptance.
