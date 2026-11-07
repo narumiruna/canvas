@@ -2,11 +2,11 @@
 
 ## Complete document
 
-Submit this shape as the `document` argument to `canvas_write`.
+Submit this shape as the `document` argument to `sketchbook_write`.
 Do not add envelope fields to the document.
 
 ```typescript
-type CanvasDocument = {
+type SketchbookDocument = {
   schemaVersion: 1
   title: string
   blocks: Array<
@@ -57,42 +57,42 @@ Do not try to override these settings.
 
 ### Create
 
-`canvas_write({ document })` creates a generated ID at revision 1.
+`sketchbook_write({ document })` creates a generated ID at revision 1.
 Omit both `documentId` and `expectedRevision` for creation.
 The result includes `documentId`, `revision`, `path`, a `blocks` summary, and `renderingVerified: false`.
 A successful write means validation and persistence succeeded, not that Mermaid or LaTeX rendered.
 
 ### Read and replace
 
-`canvas_read({ documentId })` returns this envelope in `structuredContent.stored` and `details.stored`:
+`sketchbook_read({ documentId })` returns this envelope in `structuredContent.stored` and `details.stored`:
 
 ```typescript
 {
   documentId: string
   revision: number
   updatedAt: string
-  document: CanvasDocument
+  document: SketchbookDocument
 }
 ```
 
 Read text is limited to 48,000 bytes or 1,900 lines; the complete envelope remains in the structured result and at the reported file path.
 
-`canvas_write({ document, documentId, expectedRevision })` replaces the complete document.
+`sketchbook_write({ document, documentId, expectedRevision })` replaces the complete document.
 Use the revision from the latest read as `expectedRevision`.
 A conflict leaves the current document unchanged and requires another read before retrying.
 After an interrupted response, read to check whether the write already committed.
 
 ### Open
 
-`canvas_open({ documentId })` returns an ephemeral loopback viewer URL in TUI or RPC mode.
+`sketchbook_open({ documentId })` returns an ephemeral loopback viewer URL in TUI or RPC mode.
 It does not launch an operating-system browser.
 Print and JSON modes can write and read, but cannot keep the viewer server alive.
 If opening is unavailable, return the saved ID and revision and explain this limitation.
 
 ## Storage and lifecycle
 
-Files are workspace artifacts at `.pi/canvas/<documentId>.json`.
-The package creates only a local ignore file at `.pi/canvas/.gitignore`, not a workspace-root ignore rule.
+Files are workspace artifacts at `.pi/sketchbook/<documentId>.json`.
+The package creates only a local ignore file at `.pi/sketchbook/.gitignore`, not a workspace-root ignore rule.
 Do not write the same document from multiple Pi processes.
 Tree navigation, resume, and fork do not undo disk writes; create a new ID for a separate document branch.
 Shutdown closes the viewer server, but preserves saved documents.

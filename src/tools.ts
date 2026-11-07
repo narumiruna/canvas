@@ -57,7 +57,7 @@ function result<T extends object>(data: T, text: string) {
 
 function failed(error: unknown) {
   // Bound errors as well as source output. Errors never include a viewer capability URL.
-  const message = (error instanceof Error ? error.message : "Canvas operation failed.").slice(
+  const message = (error instanceof Error ? error.message : "Sketchbook operation failed.").slice(
     0,
     2000,
   )
@@ -89,7 +89,7 @@ interface Workspace {
 }
 
 /** Register contracts now; allocate workspace resources only when a tool executes. */
-export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
+export function registerSketchbookTools(pi: ExtensionAPI): () => Promise<void> {
   const workspaces = new Map<string, Workspace>()
   const lifetime = new AbortController()
   let closing: Promise<void> | undefined
@@ -111,11 +111,11 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
 
   // Register inline to preserve TypeBox parameter inference without a runtime host import.
   pi.registerTool({
-    name: "canvas_write",
-    label: "Canvas Write",
-    promptSnippet: "Create or replace a saved Pi Canvas document with revision checks",
+    name: "sketchbook_write",
+    label: "Sketchbook Write",
+    promptSnippet: "Create or replace a saved Pi Sketchbook document with revision checks",
     description:
-      "Create or fully replace a Pi Canvas document. Updates require documentId and expectedRevision; read after a conflict. Writes only .pi/canvas/*.json, same-directory temporary files, and .pi/canvas/.gitignore in ctx.cwd; never changes the workspace root .gitignore. Saving does not verify browser rendering.",
+      "Create or fully replace a Pi Sketchbook document. Updates require documentId and expectedRevision; read after a conflict. Writes only .pi/sketchbook/*.json, same-directory temporary files, and .pi/sketchbook/.gitignore in ctx.cwd; never changes the workspace root .gitignore. Saving does not verify browser rendering.",
     parameters: WriteInputSchema,
     outputSchema: WriteOutputSchema,
     async execute(_id, input, signal, _onUpdate, ctx) {
@@ -146,11 +146,11 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
   })
 
   pi.registerTool({
-    name: "canvas_read",
-    label: "Canvas Read",
-    promptSnippet: "Read a saved Pi Canvas document and its current revision",
+    name: "sketchbook_read",
+    label: "Sketchbook Read",
+    promptSnippet: "Read a saved Pi Sketchbook document and its current revision",
     description:
-      "Read a saved Pi Canvas document and its revision before editing. Text output is limited to 48,000 bytes or 1,900 lines; the full document remains in structuredContent.stored and at the reported JSON path.",
+      "Read a saved Pi Sketchbook document and its revision before editing. Text output is limited to 48,000 bytes or 1,900 lines; the full document remains in structuredContent.stored and at the reported JSON path.",
     parameters: IdInputSchema,
     outputSchema: ReadOutputSchema,
     async execute(_id, input, signal, _onUpdate, ctx) {
@@ -159,7 +159,7 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
         active.throwIfAborted()
         const stored = await workspace(ctx.cwd).store.read(input.documentId, active)
         active.throwIfAborted()
-        const path = resolve(ctx.cwd, ".pi/canvas", `${stored.documentId}.json`)
+        const path = resolve(ctx.cwd, ".pi/sketchbook", `${stored.documentId}.json`)
         const content = sourceContent(JSON.stringify(stored, null, 2), path)
         const data: Static<typeof ReadOutputSchema> = {
           ok: true,
@@ -175,9 +175,9 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
   })
 
   pi.registerTool({
-    name: "canvas_open",
-    label: "Canvas Open",
-    promptSnippet: "Get a local read-only Pi Canvas viewer URL for the current session",
+    name: "sketchbook_open",
+    label: "Sketchbook Open",
+    promptSnippet: "Get a local read-only Pi Sketchbook viewer URL for the current session",
     description:
       "Return a local read-only viewer URL for a saved document; does not launch a browser or verify rendering. Requires a persistent tui or rpc session. Reload, new, resume, fork, or shutdown invalidates the URL; open again in the new session.",
     parameters: IdInputSchema,
@@ -188,7 +188,7 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
         active.throwIfAborted()
         if (ctx.mode !== "tui" && ctx.mode !== "rpc") {
           throw new Error(
-            "Canvas viewer requires a persistent tui or rpc session; print/json modes cannot keep it running.",
+            "Sketchbook viewer requires a persistent tui or rpc session; print/json modes cannot keep it running.",
           )
         }
         const state = workspace(ctx.cwd)
@@ -209,7 +209,7 @@ export function registerCanvasTools(pi: ExtensionAPI): () => Promise<void> {
 
   return () => {
     if (!closing) {
-      lifetime.abort(new Error("Canvas session has shut down."))
+      lifetime.abort(new Error("Sketchbook session has shut down."))
       const viewers = [...workspaces.values()].flatMap((state) =>
         state.viewer ? [state.viewer] : [],
       )

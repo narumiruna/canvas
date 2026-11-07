@@ -1,5 +1,5 @@
 import { type APIRequestContext, expect, type Locator } from "@playwright/test"
-import type { CanvasDocument, DiagramDeck, StoredDocument } from "../../src/document.js"
+import type { DiagramDeck, SketchbookDocument, StoredDocument } from "../../src/document.js"
 
 const coordinator = "http://127.0.0.1:4179"
 
@@ -10,7 +10,7 @@ export interface Fixture {
 
 export async function save(
   request: APIRequestContext,
-  document: CanvasDocument,
+  document: SketchbookDocument,
   previous?: StoredDocument,
 ) {
   const response = await request.post(`${coordinator}/documents`, {
@@ -26,7 +26,7 @@ export async function save(
 export async function asset(request: APIRequestContext, name: string) {
   const response = await request.get(`${coordinator}/assets/${name}`)
   expect(response.ok()).toBeTruthy()
-  return (await response.json()) as CanvasDocument
+  return (await response.json()) as SketchbookDocument
 }
 
 export const source = `flowchart LR
@@ -37,7 +37,7 @@ export const source = `flowchart LR
   class A important;
   linkStyle 0 stroke:#246,stroke-width:2px;`
 
-export function documentFixture(): CanvasDocument {
+export function documentFixture(): SketchbookDocument {
   const deck = (id: string): DiagramDeck => ({
     id,
     type: "diagram-deck",
@@ -90,7 +90,7 @@ export async function selectSlide(deck: Locator, id: string) {
   await deck.locator(`.slide-dot[data-slide-id="${id}"]`).click()
 }
 
-export function getDeck(document: CanvasDocument, id: string) {
+export function getDeck(document: SketchbookDocument, id: string) {
   const block = document.blocks.find((block) => block.id === id)
   if (block?.type !== "diagram-deck") throw new Error(`Missing fixture deck ${id}`)
   return block

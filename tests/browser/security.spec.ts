@@ -10,8 +10,8 @@ test("Markdown and KaTeX cannot run HTML, load images, or create unsafe links", 
     id: "untrusted-text",
     type: "markdown",
     markdown: [
-      "<script>window.canvasCompromised = true</script>",
-      '<img src="https://external.invalid/raw.png" onerror="window.canvasCompromised = true">',
+      "<script>window.sketchbookCompromised = true</script>",
+      '<img src="https://external.invalid/raw.png" onerror="window.sketchbookCompromised = true">',
       '<iframe src="https://external.invalid/frame"></iframe>',
       "![External image](https://external.invalid/image.png)",
       "![Local image](/api/documents/not-an-image)",
@@ -33,7 +33,7 @@ test("Markdown and KaTeX cannot run HTML, load images, or create unsafe links", 
   const block = page.locator('[data-block-id="untrusted-text"]')
   await expect(block.locator("script, img, iframe, object, embed, .unsafe")).toHaveCount(0)
   await expect(block.locator('a[href^="javascript:"], a[href^="data:"]')).toHaveCount(0)
-  expect(await page.evaluate(() => "canvasCompromised" in window)).toBeFalsy()
+  expect(await page.evaluate(() => "sketchbookCompromised" in window)).toBeFalsy()
   expect(external).toEqual([])
   const rules = await block
     .locator(".katex .katex-rule")

@@ -1,9 +1,9 @@
 ---
-name: canvas-explain-diagrams
-description: Explain architecture and processes with layered Mermaid diagram decks in Pi Canvas when a user requests a technical walkthrough, progressive diagrams, or Canvas tools.
+name: sketchbook-explain-diagrams
+description: Explain architecture and processes with layered Mermaid diagram decks in Pi Sketchbook when a user requests a technical walkthrough, progressive diagrams, or Sketchbook tools.
 ---
 
-# Explain with Pi Canvas
+# Explain with Pi Sketchbook
 
 Create a document in which each deck answers one main question through a connected slide sequence.
 
@@ -16,9 +16,9 @@ Create a document in which each deck answers one main question through a connect
    - Keep node names and IDs stable across slides.
    - Put long explanations, formulas, and code in Markdown rather than node labels.
 4. Before saving, review every slide contribution and transition against the diagram patterns.
-   - Correct disconnected or redundant slides before calling `canvas_write`.
-5. Use `canvas_write` to create the document, then `canvas_open` to obtain its viewer URL.
-   - For an update, use `canvas_read`, change the complete document, and write with its ID and returned revision.
+   - Correct disconnected or redundant slides before calling `sketchbook_write`.
+5. Use `sketchbook_write` to create the document, then `sketchbook_open` to obtain its viewer URL.
+   - For an update, use `sketchbook_read`, change the complete document, and write with its ID and returned revision.
    - Correct validation errors before retrying.
    - On a revision conflict, read again and apply the intended change to the current document instead of blindly resubmitting.
 6. Return the document ID, revision, and viewer link, or state why opening is unavailable.

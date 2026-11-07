@@ -1,12 +1,12 @@
 {
-  "name": "pi-canvas",
+  "name": "pi-sketchbook",
   "version": "0.0.0",
   "description": "Local, hand-drawn Mermaid walkthroughs for Pi agents.",
   "type": "module",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/narumiruna/canvas.git"
+    "url": "git+https://github.com/narumiruna/sketchbook.git"
   },
   "engines": {
     "node": ">=22.19.0"

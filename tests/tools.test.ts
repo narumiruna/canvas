@@ -11,11 +11,11 @@ import type {
 } from "@earendil-works/pi-coding-agent"
 import { Check } from "typebox/value"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { CanvasDocument, StoredDocument } from "../src/document.js"
+import type { SketchbookDocument, StoredDocument } from "../src/document.js"
 import extension from "../src/extension.js"
 import { DocumentStore } from "../src/store.js"
 
-const document: CanvasDocument = {
+const document: SketchbookDocument = {
   schemaVersion: 1,
   title: "Tool fixture",
   blocks: [
@@ -104,13 +104,13 @@ interface Read {
   contentTruncated: boolean
 }
 
-describe("Pi Canvas tool registration and lifecycle", () => {
+describe("Pi Sketchbook tool registration and lifecycle", () => {
   let cwd: string
   let host: Host
   const hosts: Host[] = []
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), "canvas-tools-"))
+    cwd = await mkdtemp(join(tmpdir(), "sketchbook-tools-"))
     host = fakeHost()
     hosts.push(host)
   })
@@ -122,7 +122,7 @@ describe("Pi Canvas tool registration and lifecycle", () => {
   })
 
   async function write(mode = "tui", input = document) {
-    const result = await host.call("canvas_write", { document: input }, cwd, mode)
+    const result = await host.call("sketchbook_write", { document: input }, cwd, mode)
     expect(result.isError).not.toBe(true)
     return data<Written>(result)
   }
@@ -133,7 +133,11 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     const timeout = vi.spyOn(globalThis, "setTimeout")
     const fresh = fakeHost()
     hosts.push(fresh)
-    expect([...fresh.tools.keys()]).toEqual(["canvas_write", "canvas_read", "canvas_open"])
+    expect([...fresh.tools.keys()]).toEqual([
+      "sketchbook_write",
+      "sketchbook_read",
+      "sketchbook_open",
+    ])
     for (const tool of fresh.tools.values()) {
       expect(tool.parameters).toHaveProperty("type", "object")
       expect(tool.outputSchema).toBeDefined()
@@ -147,20 +151,20 @@ describe("Pi Canvas tool registration and lifecycle", () => {
   })
 
   it("documents exact write scope and never promises successful rendering", async () => {
-    const description = host.tools.get("canvas_write")?.description ?? ""
-    expect(description).toContain(".pi/canvas/*.json")
-    expect(description).toContain(".pi/canvas/.gitignore")
+    const description = host.tools.get("sketchbook_write")?.description ?? ""
+    expect(description).toContain(".pi/sketchbook/*.json")
+    expect(description).toContain(".pi/sketchbook/.gitignore")
     expect(description).toContain("never changes the workspace root .gitignore")
     const written = await write()
     expect(written.renderingVerified).toBe(false)
     expect(written.revision).toBe(1)
-    expect(written.path).toBe(join(cwd, ".pi/canvas", `${written.documentId}.json`))
+    expect(written.path).toBe(join(cwd, ".pi/sketchbook", `${written.documentId}.json`))
     expect(written.blocks).toEqual([
       { id: "intro", type: "markdown" },
       { id: "deck", type: "diagram-deck", slides: 1 },
     ])
     await expect(access(join(cwd, ".gitignore"))).rejects.toThrow()
-    expect(await readFile(join(cwd, ".pi/canvas/.gitignore"), "utf8")).toContain("*")
+    expect(await readFile(join(cwd, ".pi/sketchbook/.gitignore"), "utf8")).toContain("*")
   })
 
   it.each(["tui", "rpc", "print", "json"])(
@@ -168,7 +172,12 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     async (mode) => {
       const listen = vi.spyOn(Server.prototype, "listen")
       const written = await write(mode)
-      const result = await host.call("canvas_read", { documentId: written.documentId }, cwd, mode)
+      const result = await host.call(
+        "sketchbook_read",
+        { documentId: written.documentId },
+        cwd,
+        mode,
+      )
       const read = data<Read>(result)
       expect(read.ok).toBe(true)
       expect(read.stored.document).toEqual(document)
@@ -183,23 +192,23 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     const written = await write()
     const nextDocument = { ...document, title: "Updated fixture" }
     const updated = await host.call(
-      "canvas_write",
+      "sketchbook_write",
       { document: nextDocument, documentId: written.documentId, expectedRevision: 1 },
       cwd,
     )
     expect(data<Written>(updated).revision).toBe(2)
     const conflict = await host.call(
-      "canvas_write",
+      "sketchbook_write",
       { document, documentId: written.documentId, expectedRevision: 1 },
       cwd,
     )
     expect(conflict.isError).toBe(true)
     expect(text(conflict)).toMatch(/conflict/i)
-    const read = await host.call("canvas_read", { documentId: written.documentId }, cwd)
+    const read = await host.call("sketchbook_read", { documentId: written.documentId }, cwd)
     expect(data<Read>(read).stored.document).toEqual(nextDocument)
     expect(data<Read>(read).stored.revision).toBe(2)
     const invalidUpdate = await host.call(
-      "canvas_write",
+      "sketchbook_write",
       { document, documentId: written.documentId },
       cwd,
     )
@@ -210,7 +219,12 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     "opens a real authenticated viewer in %s without claiming a rendered result",
     async (mode) => {
       const written = await write(mode)
-      const result = await host.call("canvas_open", { documentId: written.documentId }, cwd, mode)
+      const result = await host.call(
+        "sketchbook_open",
+        { documentId: written.documentId },
+        cwd,
+        mode,
+      )
       expect(result.isError).not.toBe(true)
       const opened = data<Opened>(result)
       const url = new URL(opened.url)
@@ -230,7 +244,12 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     async (mode) => {
       const written = await write()
       const listen = vi.spyOn(Server.prototype, "listen")
-      const result = await host.call("canvas_open", { documentId: written.documentId }, cwd, mode)
+      const result = await host.call(
+        "sketchbook_open",
+        { documentId: written.documentId },
+        cwd,
+        mode,
+      )
       expect(result.isError).toBe(true)
       expect(data<{ ok: boolean }>(result).ok).toBe(false)
       expect(text(result)).toContain("persistent tui or rpc session")
@@ -240,7 +259,7 @@ describe("Pi Canvas tool registration and lifecycle", () => {
   )
 
   it("reports invalid IDs, missing documents, unsafe source, and aborts through each tool's schema", async () => {
-    for (const name of ["canvas_read", "canvas_open"]) {
+    for (const name of ["sketchbook_read", "sketchbook_open"]) {
       for (const documentId of ["../outside", "00000000-0000-4000-8000-000000000000"]) {
         const result = await host.call(name, { documentId }, cwd)
         expect(result.isError).toBe(true)
@@ -248,16 +267,16 @@ describe("Pi Canvas tool registration and lifecycle", () => {
       }
     }
     const invalid = await host.call(
-      "canvas_write",
+      "sketchbook_write",
       { document: { ...document, schemaVersion: 2 } },
       cwd,
     )
     expect(invalid.isError).toBe(true)
     const aborted = AbortSignal.abort(new Error("Tool cancelled"))
     for (const [name, input] of [
-      ["canvas_write", { document }],
-      ["canvas_read", { documentId: "invalid" }],
-      ["canvas_open", { documentId: "invalid" }],
+      ["sketchbook_write", { document }],
+      ["sketchbook_read", { documentId: "invalid" }],
+      ["sketchbook_open", { documentId: "invalid" }],
     ] as const) {
       const result = await host.call(name, input, cwd, "tui", aborted)
       expect(result.isError).toBe(true)
@@ -266,12 +285,12 @@ describe("Pi Canvas tool registration and lifecycle", () => {
   })
 
   it("bounds model-facing source while retaining the complete document and its storage path", async () => {
-    const large: CanvasDocument = {
+    const large: SketchbookDocument = {
       ...document,
       blocks: [{ id: "large", type: "markdown", markdown: "A large source line.\n".repeat(5000) }],
     }
     const written = await write("tui", large)
-    const result = await host.call("canvas_read", { documentId: written.documentId }, cwd)
+    const result = await host.call("sketchbook_read", { documentId: written.documentId }, cwd)
     const read = data<Read>(result)
     expect(read.contentTruncated).toBe(true)
     expect(read.stored.document).toEqual(large)
@@ -285,11 +304,11 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     const first = await write()
     const other = join(cwd, "other")
     await mkdir(other)
-    const second = data<Written>(await host.call("canvas_write", { document }, other))
-    expect(second.path).toContain(join(other, ".pi/canvas"))
-    const absent = await host.call("canvas_read", { documentId: first.documentId }, other)
+    const second = data<Written>(await host.call("sketchbook_write", { document }, other))
+    expect(second.path).toContain(join(other, ".pi/sketchbook"))
+    const absent = await host.call("sketchbook_read", { documentId: first.documentId }, other)
     expect(absent.isError).toBe(true)
-    const present = await host.call("canvas_read", { documentId: first.documentId }, cwd)
+    const present = await host.call("sketchbook_read", { documentId: first.documentId }, cwd)
     expect(data<Read>(present).stored.document).toEqual(document)
   })
 
@@ -298,7 +317,7 @@ describe("Pi Canvas tool registration and lifecycle", () => {
     async (reason) => {
       const written = await write()
       const first = data<Opened>(
-        await host.call("canvas_open", { documentId: written.documentId }, cwd),
+        await host.call("sketchbook_open", { documentId: written.documentId }, cwd),
       )
       const url = new URL(first.url)
       const socket = connect(Number(url.port), url.hostname)
@@ -309,17 +328,21 @@ describe("Pi Canvas tool registration and lifecycle", () => {
       await Promise.all([host.shutdown(reason), host.shutdown(reason)])
       await disconnected
       await expect(fetch(url.origin)).rejects.toThrow()
-      const stale = await host.call("canvas_open", { documentId: written.documentId }, cwd)
+      const stale = await host.call("sketchbook_open", { documentId: written.documentId }, cwd)
       expect(stale.isError).toBe(true)
       expect(JSON.stringify(stale)).not.toContain("http://")
       const replacement = fakeHost()
       hosts.push(replacement)
       const second = data<Opened>(
-        await replacement.call("canvas_open", { documentId: written.documentId }, cwd),
+        await replacement.call("sketchbook_open", { documentId: written.documentId }, cwd),
       )
       expect(new URL(second.url).hash).not.toBe(url.hash)
       expect((await fetch(new URL(second.url).origin)).status).toBe(200)
-      const read = await replacement.call("canvas_read", { documentId: written.documentId }, cwd)
+      const read = await replacement.call(
+        "sketchbook_read",
+        { documentId: written.documentId },
+        cwd,
+      )
       expect(data<Read>(read).stored.revision).toBe(1)
     },
   )
@@ -334,7 +357,7 @@ describe("Pi Canvas tool registration and lifecycle", () => {
       }),
     )
     const listen = vi.spyOn(Server.prototype, "listen")
-    const pending = host.call("canvas_open", { documentId: written.documentId }, cwd)
+    const pending = host.call("sketchbook_open", { documentId: written.documentId }, cwd)
     await host.shutdown("reload")
     release(stored)
     const result = await pending

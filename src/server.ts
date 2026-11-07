@@ -75,7 +75,8 @@ export class ViewerServer {
   }
 
   private assertOpen(): void {
-    if (this.closed) throw new Error("Canvas viewer is closed. Open it from the current session.")
+    if (this.closed)
+      throw new Error("Sketchbook viewer is closed. Open it from the current session.")
     if (this.failure) throw this.failure
   }
 
@@ -86,7 +87,7 @@ export class ViewerServer {
       )
       const index = await realpath(resolve(this.assetsRoot, "index.html"))
       if (!contained(this.assetsRoot, index) || !(await stat(index)).isFile()) {
-        throw new Error("Canvas viewer index is not a regular bundled file.")
+        throw new Error("Sketchbook viewer index is not a regular bundled file.")
       }
       this.assertOpen()
       const server = createServer((request, response) => {
@@ -94,7 +95,7 @@ export class ViewerServer {
         void this.handle(request, response).catch(() => {
           if (response.destroyed) return
           if (response.headersSent) response.destroy()
-          else reply(response, 500, "Canvas request failed.")
+          else reply(response, 500, "Sketchbook request failed.")
         })
       })
       this.server = server
@@ -118,7 +119,7 @@ export class ViewerServer {
           })
           const address = server.address()
           if (!address || typeof address === "string") {
-            reject(new Error("Canvas viewer did not acquire a loopback port."))
+            reject(new Error("Sketchbook viewer did not acquire a loopback port."))
             return
           }
           this.origin = `http://127.0.0.1:${address.port}`
@@ -126,7 +127,7 @@ export class ViewerServer {
         })
       })
     } catch (error) {
-      this.failure = error instanceof Error ? error : new Error("Canvas viewer startup failed.")
+      this.failure = error instanceof Error ? error : new Error("Sketchbook viewer startup failed.")
       throw this.failure
     }
   }

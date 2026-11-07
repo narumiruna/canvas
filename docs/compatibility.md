@@ -36,7 +36,7 @@ Earlier baseline verification produced these results:
 - Fullscreen checks exercise the native browser API and rejected/unavailable-API fallback, focus restoration, inert/scroll restoration, source changes, unmount, and late native-request completion.
 - `npm run test:package` passed actual host/resource discovery and isolated installation checks on Node.js `22.19.0` and `26.8.2` in `scripts/package-smoke.ts`.
   - `DefaultResourceLoader` discovers the bundled skill.
-  - `session.followUp('/skill:canvas-explain-diagrams ...')` expands the skill without a model call.
+  - `session.followUp(...)` expands a queued skill command without a model call.
   - Real Pi tool-schema validation and write/read/open execution succeed.
   - Chromium loads built local and extracted-tarball assets without external requests.
   - Session shutdown closes the viewer listener.
@@ -59,11 +59,24 @@ The update changes explanations and authoring rules, not diagram sources, stable
 Fixture-specific assertions check expected components, handoff steps, labels, and recovery paths; they do not validate the meaning of arbitrary decks.
 Reader comprehension and real-model behavior remain unverified; see the deck continuity review in [acceptance](acceptance.md).
 
+### Sketchbook rename
+
+Verification on Node.js `26.8.2` on 2026-11-07 produced these results:
+
+- `npm run ci` passed formatting/lint, TypeScript checks, all 126 Vitest tests, and production builds.
+- `npm run test:browser` passed all 26 Chromium tests, including the Pi Sketchbook header and page title.
+- `npm pack --dry-run` produced the expected `pi-sketchbook` package manifest and renamed skill paths.
+- `npm run test:package` passed local and extracted-tarball loading, renamed skill-command expansion, all three `sketchbook_*` tools, `.pi/sketchbook/` storage, viewer branding, and shutdown.
+
+The rename keeps document schema version 1 and does not move existing workspace documents automatically.
+Node.js `22.19.0` was not rerun for this rename; its results above are earlier baseline evidence.
+GitHub repository renaming, npm name ownership, publication, and human acceptance remain external checks in [acceptance](acceptance.md).
+
 ## Fixture coverage
 
-[Architecture walkthrough](../skills/canvas-explain-diagrams/assets/architecture-walkthrough.json) provides overview, API, and storage slides with stable component IDs and labels.
+[Architecture walkthrough](../skills/sketchbook-explain-diagrams/assets/architecture-walkthrough.json) provides overview, API, and storage slides with stable component IDs and labels.
 It includes subgraphs, Chinese text, a long label, and an independent one-slide deck.
-[Process walkthrough](../skills/canvas-explain-diagrams/assets/process-walkthrough.json) provides overview, start, processing, and end slides plus an independent conflict deck.
+[Process walkthrough](../skills/sketchbook-explain-diagrams/assets/process-walkthrough.json) provides overview, start, processing, and end slides plus an independent conflict deck.
 Both include Markdown prose, inline/display LaTeX, and fenced TypeScript.
 All nine bundled slides are covered by browser rendering checks.
 The skill test validates data and policy, not Mermaid parsing or visual quality.

@@ -19,8 +19,8 @@ test("bundled Markdown, math, code, Chinese subgraphs, sanitized styles and nati
         const renderer = nativeSvg(...args);
         const draw = renderer.draw.bind(renderer);
         renderer.draw = (shape) => {
-          window.canvasRoughCalls ??= [];
-          window.canvasRoughCalls.push({
+          window.sketchbookRoughCalls ??= [];
+          window.sketchbookRoughCalls.push({
             shape: shape.shape,
             seed: shape.options.seed,
             roughness: shape.options.roughness,
@@ -44,6 +44,8 @@ test("bundled Markdown, math, code, Chinese subgraphs, sanitized styles and nati
   })
   await page.goto(fixture.url)
   await expect(page.getByRole("heading", { name: "Browser fixture", exact: true })).toBeVisible()
+  await expect(page).toHaveTitle("Browser fixture — Pi Sketchbook")
+  await expect(page.locator(".brand")).toHaveText("Pi Sketchbook")
   await expect(page.locator(".katex-display")).toHaveCount(1)
   await expect(page.locator(".katex").first()).toBeVisible()
   await expect(page.locator("pre code").first()).toHaveText("const safe = true;\n")
@@ -93,7 +95,7 @@ test("bundled Markdown, math, code, Chinese subgraphs, sanitized styles and nati
         /if \(node.look === "handDrawn"\) \{\s*const rc = rough\w*\.svg\(shapeSvg\)/.test(chunk),
     ),
   ).toBeTruthy()
-  const calls = (await page.evaluate(() => Reflect.get(window, "canvasRoughCalls"))) as Array<{
+  const calls = (await page.evaluate(() => Reflect.get(window, "sketchbookRoughCalls"))) as Array<{
     shape: string
     seed: number
     roughness: number

@@ -1,6 +1,6 @@
-# Pi Canvas
+# Pi Sketchbook
 
-Pi Canvas is a Pi package for local technical documents with Markdown, LaTeX, code, and hand-drawn Mermaid diagram decks.
+Pi Sketchbook is a Pi package for local technical documents with Markdown, LaTeX, code, and hand-drawn Mermaid diagram decks.
 Each deck shows one diagram and its explanation at a time.
 Build each deck around one question: each slide must connect to the established context and add useful information.
 Keep repeated component names and meanings consistent; put independent questions in separate decks.
@@ -26,34 +26,47 @@ Git-source installation is not supported in this release.
 After the owner confirms the npm name and publishes a release, install that release with:
 
 ```sh
-pi install npm:pi-canvas
+pi install npm:pi-sketchbook
 ```
 
 This command is not evidence that the package is published.
 Review package code before installation and project declarations before granting Pi project trust.
+
+## Upgrade from Pi Canvas
+
+The package is now `pi-sketchbook`.
+Replace `canvas_*` tool calls with `sketchbook_*` and `/skill:canvas-explain-diagrams` with `/skill:sketchbook-explain-diagrams`.
+The old names are not aliases.
+
+Existing documents in `.pi/canvas/` are not moved automatically.
+Stop all Pi sessions that use the workspace and back up the saved documents before moving them.
+If `.pi/sketchbook/` does not exist, move the complete `.pi/canvas/` directory to `.pi/sketchbook/`.
+If both directories exist, keep both and resolve document ID conflicts before moving files; do not overwrite either directory.
+Document IDs, revisions, and schema version 1 remain unchanged.
+Start Pi again to load the renamed tools and skill, then open documents for new viewer URLs.
 
 ## Use
 
 Load the bundled skill explicitly:
 
 ```text
-/skill:canvas-explain-diagrams Explain this system with an overview, API detail, and storage detail.
+/skill:sketchbook-explain-diagrams Explain this system with an overview, API detail, and storage detail.
 ```
 
 Automatic skill selection is not guaranteed.
-The skill includes complete [architecture](skills/canvas-explain-diagrams/assets/architecture-walkthrough.json) and [process](skills/canvas-explain-diagrams/assets/process-walkthrough.json) examples.
+The skill includes complete [architecture](skills/sketchbook-explain-diagrams/assets/architecture-walkthrough.json) and [process](skills/sketchbook-explain-diagrams/assets/process-walkthrough.json) examples.
 
-| Tool           | Input and result                                                                                                      |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `canvas_write` | `{document}` creates a document and returns its ID, revision, storage path, summary, and rendering-unverified status. |
-| `canvas_read`  | `{documentId}` returns `{documentId, revision, updatedAt, document}` in `structuredContent.stored`.                   |
-| `canvas_write` | `{document, documentId, expectedRevision}` replaces the full document if the revision matches.                        |
-| `canvas_open`  | `{documentId}` returns an ephemeral local viewer URL; it does not launch a browser.                                   |
+| Tool               | Input and result                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `sketchbook_write` | `{document}` creates a document and returns its ID, revision, storage path, summary, and rendering-unverified status. |
+| `sketchbook_read`  | `{documentId}` returns `{documentId, revision, updatedAt, document}` in `structuredContent.stored`.                   |
+| `sketchbook_write` | `{document, documentId, expectedRevision}` replaces the full document if the revision matches.                        |
+| `sketchbook_open`  | `{documentId}` returns an ephemeral local viewer URL; it does not launch a browser.                                   |
 
 For updates, read first and use the returned revision.
 On conflict, read again and apply the change to the current document.
 A successful write confirms validation and storage, not browser rendering.
-The [document format](skills/canvas-explain-diagrams/references/document-format.md) defines fields, IDs, limits, and tool details.
+The [document format](skills/sketchbook-explain-diagrams/references/document-format.md) defines fields, IDs, limits, and tool details.
 
 ## Rendering and security
 
@@ -92,12 +105,12 @@ Show source displays inert text, not executable HTML.
 
 ## Files and lifecycle
 
-Documents are stored in the Pi working directory at `.pi/canvas/<documentId>.json`.
-Only `.pi/canvas/.gitignore` is created for local artifact exclusions; the root `.gitignore` is not changed.
+Documents are stored in the Pi working directory at `.pi/sketchbook/<documentId>.json`.
+Only `.pi/sketchbook/.gitignore` is created for local artifact exclusions; the root `.gitignore` is not changed.
 Writes use complete replacement, revision checks, a same-process mutation queue, and atomic rename.
 Do not write the same document from multiple Pi processes.
 
-Only `canvas_open` starts the viewer server.
+Only `sketchbook_open` starts the viewer server.
 TUI and RPC sessions can open it; print and JSON modes support write/read only.
 Shutdown closes the server but does not remove documents.
 After reload, new, resume, or fork, open again for a current URL.

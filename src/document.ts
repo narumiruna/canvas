@@ -14,7 +14,7 @@ const RevisionSchema = Type.Integer({ minimum: 1, maximum: Number.MAX_SAFE_INTEG
 
 export const DocumentIdSchema = Type.String({
   pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
-  description: "Document ID returned by canvas_write; not a file path.",
+  description: "Document ID returned by sketchbook_write; not a file path.",
 })
 
 export const MarkdownBlockSchema = Type.Object(
@@ -43,7 +43,7 @@ export const DiagramDeckSchema = Type.Object(
   { additionalProperties: false },
 )
 
-export const CanvasDocumentSchema = Type.Object(
+export const SketchbookDocumentSchema = Type.Object(
   {
     schemaVersion: Type.Literal(1),
     title: TitleSchema,
@@ -57,7 +57,7 @@ export const CanvasDocumentSchema = Type.Object(
 
 export const WriteInputSchema = Type.Object(
   {
-    document: CanvasDocumentSchema,
+    document: SketchbookDocumentSchema,
     documentId: Type.Optional(DocumentIdSchema),
     expectedRevision: Type.Optional(RevisionSchema),
   },
@@ -69,12 +69,12 @@ export const StoredDocumentSchema = Type.Object(
     documentId: DocumentIdSchema,
     revision: RevisionSchema,
     updatedAt: Type.String({ minLength: 1, maxLength: 32 }),
-    document: CanvasDocumentSchema,
+    document: SketchbookDocumentSchema,
   },
   { additionalProperties: false },
 )
 
-export type CanvasDocument = Static<typeof CanvasDocumentSchema>
+export type SketchbookDocument = Static<typeof SketchbookDocumentSchema>
 export type MarkdownBlock = Static<typeof MarkdownBlockSchema>
 export type DiagramDeck = Static<typeof DiagramDeckSchema>
 export type WriteInput = Static<typeof WriteInputSchema>
@@ -89,7 +89,7 @@ export function assertSchema<T extends TSchema>(
       .slice(0, 3)
       .map((error) => `${error.instancePath || "/"}: ${error.message}`)
       .join("; ")
-    throw new Error(`Invalid canvas data: ${errors}`)
+    throw new Error(`Invalid sketchbook data: ${errors}`)
   }
 }
 
@@ -105,10 +105,10 @@ function validateMermaid(source: string, location: string): void {
   }
 }
 
-export function validateDocument(value: unknown): CanvasDocument {
-  assertSchema(CanvasDocumentSchema, value)
+export function validateDocument(value: unknown): SketchbookDocument {
+  assertSchema(SketchbookDocumentSchema, value)
   if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_DOCUMENT_BYTES) {
-    throw new Error(`Canvas document exceeds ${MAX_DOCUMENT_BYTES} bytes`)
+    throw new Error(`Sketchbook document exceeds ${MAX_DOCUMENT_BYTES} bytes`)
   }
   const blockIds = new Set<string>()
   for (const block of value.blocks) {
@@ -137,7 +137,7 @@ export function validateWriteInput(value: unknown): WriteInput {
 export function validateStoredDocument(value: unknown): StoredDocument {
   assertSchema(StoredDocumentSchema, value)
   if (Number.isNaN(Date.parse(value.updatedAt)))
-    throw new Error("Invalid canvas updatedAt timestamp")
+    throw new Error("Invalid sketchbook updatedAt timestamp")
   validateDocument(value.document)
   return value
 }

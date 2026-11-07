@@ -12,12 +12,12 @@ The provider or account owner must authorize API usage before either check is ru
 Record the model ID, Pi version, package revision, prompt, tool transcript, output ID/revision, browser evidence, and any errors.
 Do not record credentials or a reusable capability token in published evidence.
 First send each prompt without an explicit skill command to observe discovery.
-If the model does not load the skill, record that result and repeat with `/skill:canvas-explain-diagrams` prefixed to the same prompt.
+If the model does not load the skill, record that result and repeat with `/skill:sketchbook-explain-diagrams` prefixed to the same prompt.
 A successful explicit invocation does not prove reliable automatic selection.
 
 ### Architecture prompt
 
-> Create a Pi Canvas walkthrough for a fictional document service used by new backend engineers.
+> Create a Pi Sketchbook walkthrough for a fictional document service used by new backend engineers.
 > Start with a system overview, then explain the API, then the storage write path.
 > Keep the Client, Document API, and Document Store names and node IDs consistent.
 > Include prose, inline and display LaTeX for request latency, and a short fenced TypeScript example.
@@ -40,7 +40,7 @@ Expected assertions:
 
 ### Process prompt
 
-> Create a Pi Canvas guide to replacing a saved document.
+> Create a Pi Sketchbook guide to replacing a saved document.
 > Show the complete flow, then the input and start, then validation and revision checking, then output and end.
 > Show how a revision conflict returns to a read instead of overwriting a newer change.
 > Include prose, inline and display LaTeX for the next revision, and a fenced TypeScript example.
@@ -94,7 +94,7 @@ Paid model evaluations and release operations still require the authorizations s
 ## Human browser review
 
 Run a built package in a persistent Pi TUI or RPC session.
-Use `canvas_write` to save each bundled asset, then `canvas_open` to obtain current URLs.
+Use `sketchbook_write` to save each bundled asset, then `sketchbook_open` to obtain current URLs.
 
 - [ ] Confirm all architecture and process slides render with their explanations.
 - [ ] Confirm the diagrams have a readable hand-drawn style, arrows, Chinese labels, and long labels.
@@ -117,7 +117,11 @@ Remote SSH, container forwarding, and WSLg/Windows browser connectivity need sep
 
 ## Package-owner handoff
 
-1. Confirm the final npm name is available and the repository identity is correct.
+The package metadata now names `narumiruna/sketchbook`; the source rename does not rename the GitHub repository or change checkout remotes.
+
+1. Rename the GitHub repository to `narumiruna/sketchbook` and update checkout remotes after that owner action.
+   - Confirm the repository URL in `package.json` resolves before release.
+   - Confirm availability and ownership of the npm name `pi-sketchbook` before publication.
 2. Configure npm trusted publishing for the intended repository and `release.yml`.
    - Confirm GitHub Actions has the required pull-request permissions.
    - Review the existing release workflow's `PAT_TOKEN` requirement and supply an appropriate owner-managed credential or approved replacement.

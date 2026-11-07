@@ -332,7 +332,7 @@ for (const outcome of ["resolve", "reject"] as const) {
       Object.defineProperty(document, "fullscreenElement", { get: () => active })
       Element.prototype.requestFullscreen = function () {
         return new Promise<void>((resolve, reject) => {
-          Reflect.set(window, "settleCanvasFullscreen", (outcome: string) => {
+          Reflect.set(window, "settleSketchbookFullscreen", (outcome: string) => {
             if (outcome === "reject") reject(new Error("Late rejection"))
             else {
               active = this
@@ -358,7 +358,7 @@ for (const outcome of ["resolve", "reject"] as const) {
     await save(request, content, fixture.stored)
     await expect(deck).toHaveCount(0)
     await page.evaluate(
-      (outcome) => Reflect.get(window, "settleCanvasFullscreen")(outcome),
+      (outcome) => Reflect.get(window, "settleSketchbookFullscreen")(outcome),
       outcome,
     )
     await expect.poll(() => page.evaluate(() => document.fullscreenElement === null)).toBe(true)

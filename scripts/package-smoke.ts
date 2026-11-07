@@ -17,9 +17,11 @@ import { Check } from "typebox/value"
 
 const execute = promisify(execFile)
 const root = resolve(import.meta.dirname, "..")
-const temporary = await mkdtemp(join(tmpdir(), "pi-canvas-package-"))
+const temporary = await mkdtemp(join(tmpdir(), "pi-sketchbook-package-"))
 
 async function smoke(packagePath: string, label: string): Promise<void> {
+  const manifest = JSON.parse(await readFile(join(packagePath, "package.json"), "utf8"))
+  assert.equal(manifest.name, "pi-sketchbook")
   const workspace = join(temporary, label)
   const agentDir = join(workspace, "agent")
   await mkdir(workspace, { recursive: true })
@@ -42,14 +44,14 @@ async function smoke(packagePath: string, label: string): Promise<void> {
   assert.equal(loaded.extensions.length, 1)
   const extension = loaded.extensions[0]
   assert.deepEqual([...extension.tools.keys()].sort(), [
-    "canvas_open",
-    "canvas_read",
-    "canvas_write",
+    "sketchbook_open",
+    "sketchbook_read",
+    "sketchbook_write",
   ])
   const skills = loader.getSkills()
   assert.deepEqual(skills.diagnostics, [])
   assert.equal(skills.skills.length, 1)
-  assert.equal(skills.skills[0].name, "canvas-explain-diagrams")
+  assert.equal(skills.skills[0].name, "sketchbook-explain-diagrams")
 
   // Queue expansion exercises Pi's public skill command path without requesting a model turn.
   const modelRuntime = await ModelRuntime.create({
@@ -74,14 +76,14 @@ async function smoke(packagePath: string, label: string): Promise<void> {
   await session.bindExtensions({ mode: "rpc", onError: (error) => errors.push(error.error) })
   try {
     assert.equal(
-      await session.followUp("/skill:canvas-explain-diagrams Explain the API architecture."),
+      await session.followUp("/skill:sketchbook-explain-diagrams Explain the API architecture."),
       "queued",
     )
     const expanded = session.getFollowUpMessages()[0]
-    assert.ok(expanded.includes('<skill name="canvas-explain-diagrams"'))
-    assert.ok(expanded.includes("canvas_write"))
+    assert.ok(expanded.includes('<skill name="sketchbook-explain-diagrams"'))
+    assert.ok(expanded.includes("sketchbook_write"))
     assert.ok(expanded.endsWith("Explain the API architecture."))
-    assert.ok(session.getActiveToolNames().includes("canvas_write"))
+    assert.ok(session.getActiveToolNames().includes("sketchbook_write"))
 
     const ctx = { cwd: workspace, mode: "rpc" } as ExtensionToolContext
     async function call(name: string, input: unknown) {
@@ -95,16 +97,20 @@ async function smoke(packagePath: string, label: string): Promise<void> {
     }
     const document = JSON.parse(
       await readFile(
-        join(packagePath, "skills/canvas-explain-diagrams/assets/architecture-walkthrough.json"),
+        join(
+          packagePath,
+          "skills/sketchbook-explain-diagrams/assets/architecture-walkthrough.json",
+        ),
         "utf8",
       ),
     )
-    const created = await call("canvas_write", { document })
+    const created = await call("sketchbook_write", { document })
+    assert.equal(created.path, join(workspace, ".pi/sketchbook", `${created.documentId}.json`))
     assert.equal(created.renderingVerified, false)
     assert.equal(created.revision, 1)
-    const read = await call("canvas_read", { documentId: created.documentId })
+    const read = await call("sketchbook_read", { documentId: created.documentId })
     assert.deepEqual((read.stored as { document: unknown }).document, document)
-    const opened = await call("canvas_open", { documentId: created.documentId })
+    const opened = await call("sketchbook_open", { documentId: created.documentId })
     assert.equal(opened.renderingVerified, false)
     const url = new URL(String(opened.url))
     const token = new URLSearchParams(url.hash.slice(1)).get("token")
@@ -124,6 +130,8 @@ async function smoke(packagePath: string, label: string): Promise<void> {
       })
       await page.goto(url.href)
       await page.locator(".diagram-svg svg").first().waitFor({ timeout: 30_000 })
+      assert.equal(await page.title(), `${document.title} — Pi Sketchbook`)
+      assert.equal(await page.locator(".brand").textContent(), "Pi Sketchbook")
       assert.ok((await page.locator(".katex").count()) > 0)
       assert.deepEqual(external, [], "Packed viewer must work without external requests")
       await page.screenshot({
@@ -156,12 +164,17 @@ try {
     ["pack", "--ignore-scripts", "--json", "--pack-destination", temporary],
     { cwd: root },
   )
-  const [packed] = JSON.parse(stdout) as Array<{ filename: string; files: Array<{ path: string }> }>
+  const [packed] = JSON.parse(stdout) as Array<{
+    name: string
+    filename: string
+    files: Array<{ path: string }>
+  }>
+  assert.equal(packed.name, "pi-sketchbook")
   const files = packed.files.map((file) => file.path)
   assert.ok(files.includes("dist/extension.js"))
   assert.ok(files.includes("dist/web/index.html"))
   assert.ok(files.includes("dist/web/THIRD_PARTY_LICENSES.md"))
-  assert.ok(files.includes("skills/canvas-explain-diagrams/SKILL.md"))
+  assert.ok(files.includes("skills/sketchbook-explain-diagrams/SKILL.md"))
   assert.ok(files.includes("README.md") && files.includes("LICENSE"))
   assert.ok(files.includes("docs/compatibility.md") && files.includes("docs/acceptance.md"))
   assert.ok(!files.some((file) => file.startsWith("docs/plans/")))

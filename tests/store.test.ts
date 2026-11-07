@@ -4,7 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { withFileMutationQueue } from "@earendil-works/pi-coding-agent"
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
-import { type CanvasDocument, MAX_DOCUMENT_BYTES } from "../src/document.js"
+import { MAX_DOCUMENT_BYTES, type SketchbookDocument } from "../src/document.js"
 import { DocumentStore } from "../src/store.js"
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -12,7 +12,7 @@ vi.mock("node:fs/promises", async (importOriginal) => {
   return { ...actual, rename: vi.fn(actual.rename) }
 })
 
-const document: CanvasDocument = {
+const document: SketchbookDocument = {
   schemaVersion: 1,
   title: "Example",
   blocks: [{ id: "text", type: "markdown", markdown: "A document." }],
@@ -22,8 +22,8 @@ let outside: string
 let store: DocumentStore
 
 beforeEach(async () => {
-  cwd = await fs.mkdtemp(join(tmpdir(), "pi-canvas-store-"))
-  outside = await fs.mkdtemp(join(tmpdir(), "pi-canvas-outside-"))
+  cwd = await fs.mkdtemp(join(tmpdir(), "pi-sketchbook-store-"))
+  outside = await fs.mkdtemp(join(tmpdir(), "pi-sketchbook-outside-"))
   store = new DocumentStore(cwd)
 })
 
@@ -44,10 +44,10 @@ describe("DocumentStore", () => {
     const { stored, path } = await pending
     expect(stored.document.title).toBe("Example")
     expect(stored.revision).toBe(1)
-    expect(path).toBe(join(cwd, ".pi", "canvas", `${stored.documentId}.json`))
+    expect(path).toBe(join(cwd, ".pi", "sketchbook", `${stored.documentId}.json`))
     expect(await store.read(stored.documentId)).toEqual(stored)
     expect(await fs.readFile(join(cwd, ".gitignore"), "utf8")).toBe("# User rules\n")
-    expect(await fs.readFile(join(cwd, ".pi", "canvas", ".gitignore"), "utf8")).toBe("*\n")
+    expect(await fs.readFile(join(cwd, ".pi", "sketchbook", ".gitignore"), "utf8")).toBe("*\n")
     const result = await store.write({
       document: { ...document, title: "Updated" },
       documentId: stored.documentId,
@@ -84,7 +84,7 @@ describe("DocumentStore", () => {
     ).rejects.toThrow("disk failure")
     expect(await fs.readFile(path, "utf8")).toBe(before)
     expect(
-      (await fs.readdir(join(cwd, ".pi", "canvas"))).filter((name) => name.endsWith(".tmp")),
+      (await fs.readdir(join(cwd, ".pi", "sketchbook"))).filter((name) => name.endsWith(".tmp")),
     ).toEqual([])
   })
 
@@ -134,24 +134,27 @@ describe("DocumentStore", () => {
   test("does not create directories for invalid IDs or documents", async () => {
     await expect(store.read("../outside")).rejects.toThrow()
     await expect(
-      store.write({ document: { ...document, schemaVersion: 2 } as unknown as CanvasDocument }),
+      store.write({ document: { ...document, schemaVersion: 2 } as unknown as SketchbookDocument }),
     ).rejects.toThrow()
     await expect(fs.stat(join(cwd, ".pi"))).rejects.toThrow()
     await expect(store.read(randomUUID())).rejects.toThrow()
   })
 
-  test.each([".pi", ".pi/canvas"])("refuses symlinked storage directory %s", async (relative) => {
-    if (relative.includes("/")) await fs.mkdir(join(cwd, ".pi"))
-    await fs.symlink(outside, join(cwd, relative), "dir")
-    await expect(store.write({ document })).rejects.toThrow("real directories")
-    expect(await fs.readdir(outside)).toEqual([])
-  })
+  test.each([".pi", ".pi/sketchbook"])(
+    "refuses symlinked storage directory %s",
+    async (relative) => {
+      if (relative.includes("/")) await fs.mkdir(join(cwd, ".pi"))
+      await fs.symlink(outside, join(cwd, relative), "dir")
+      await expect(store.write({ document })).rejects.toThrow("real directories")
+      expect(await fs.readdir(outside)).toEqual([])
+    },
+  )
 
   test("refuses a symlinked artifact ignore without changing its target", async () => {
-    await fs.mkdir(join(cwd, ".pi", "canvas"), { recursive: true })
+    await fs.mkdir(join(cwd, ".pi", "sketchbook"), { recursive: true })
     const target = join(outside, "ignore")
     await fs.writeFile(target, "User data")
-    await fs.symlink(target, join(cwd, ".pi", "canvas", ".gitignore"))
+    await fs.symlink(target, join(cwd, ".pi", "sketchbook", ".gitignore"))
     await expect(store.write({ document })).rejects.toThrow("regular file")
     expect(await fs.readFile(target, "utf8")).toBe("User data")
   })

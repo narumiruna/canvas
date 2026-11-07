@@ -5,11 +5,11 @@ import { connect } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { CanvasDocument, StoredDocument } from "../src/document.js"
+import type { SketchbookDocument, StoredDocument } from "../src/document.js"
 import { ViewerServer } from "../src/server.js"
 import { DocumentStore } from "../src/store.js"
 
-const document: CanvasDocument = {
+const document: SketchbookDocument = {
   schemaVersion: 1,
   title: "Server fixture",
   blocks: [{ id: "intro", type: "markdown", markdown: "Private fixture content." }],
@@ -65,7 +65,7 @@ describe("ViewerServer", () => {
   const servers: ViewerServer[] = []
 
   beforeEach(async () => {
-    cwd = await mkdtemp(join(tmpdir(), "canvas-server-"))
+    cwd = await mkdtemp(join(tmpdir(), "sketchbook-server-"))
     assets = join(cwd, "viewer")
     await mkdir(join(assets, "assets"), { recursive: true })
     await writeFile(
@@ -228,7 +228,7 @@ describe("ViewerServer", () => {
       expect((await get(url, path, auth)).status).toBe(400)
     }
     for (const path of [
-      "/.pi/canvas/anything.json",
+      "/.pi/sketchbook/anything.json",
       "/.hidden.js",
       "/src/server.ts",
       "/assets/app.js.map",

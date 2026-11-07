@@ -1,14 +1,14 @@
 import { describe, expect, test } from "vitest"
 import {
-  type CanvasDocument,
   MAX_DOCUMENT_BYTES,
   MAX_MERMAID_BYTES,
+  type SketchbookDocument,
   validateDocument,
   validateDocumentId,
   validateWriteInput,
 } from "../src/document.js"
 
-function document(source = "flowchart LR\n A[Start] --> B[Finish]"): CanvasDocument {
+function document(source = "flowchart LR\n A[Start] --> B[Finish]"): SketchbookDocument {
   return {
     schemaVersion: 1,
     title: "Example",

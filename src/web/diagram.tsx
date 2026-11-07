@@ -282,7 +282,7 @@ export function Diagram({ source, blockId, slideId }: Props) {
 
   useEffect(() => {
     const current = ++generation.current
-    const id = `canvas-diagram-${++nextId}`
+    const id = `sketchbook-diagram-${++nextId}`
     let cancelled = false
     const render = async () => {
       if (cancelled) return

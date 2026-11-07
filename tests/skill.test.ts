@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url"
 import { describe, expect, test } from "vitest"
 import { type DiagramDeck, validateDocument } from "../src/document.js"
 
-const skillRoot = fileURLToPath(new URL("../skills/canvas-explain-diagrams/", import.meta.url))
+const skillRoot = fileURLToPath(new URL("../skills/sketchbook-explain-diagrams/", import.meta.url))
 const skillFile = resolve(skillRoot, "SKILL.md")
 const assets = ["architecture-walkthrough.json", "process-walkthrough.json"] as const
 
@@ -86,7 +86,7 @@ function expectProcessStages(deck: DiagramDeck) {
   expect(end.mermaid).toContain("Result --> End[")
 }
 
-describe("bundled Canvas skill", () => {
+describe("bundled Sketchbook skill", () => {
   test("has portable, concise routing frontmatter", async () => {
     const skill = await readFile(skillFile, "utf8")
     const frontmatter = skill.match(/^---\n([\s\S]+?)\n---\n/)
@@ -102,7 +102,7 @@ describe("bundled Canvas skill", () => {
         }),
     )
     expect(Object.keys(fields).sort()).toEqual(["description", "name"])
-    expect(fields.name).toBe("canvas-explain-diagrams")
+    expect(fields.name).toBe("sketchbook-explain-diagrams")
     expect(fields.name).toBe(relative(dirname(skillRoot), skillRoot))
     expect(fields.name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     expect(fields.name.length).toBeLessThanOrEqual(64)

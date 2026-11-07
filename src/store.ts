@@ -27,7 +27,7 @@ export class DocumentStore {
 
   private async directory(create: boolean): Promise<string> {
     let directory = await realpath(this.cwd)
-    for (const part of [".pi", "canvas"]) {
+    for (const part of [".pi", "sketchbook"]) {
       directory = join(directory, part)
       if (create) {
         try {
@@ -42,7 +42,7 @@ export class DocumentStore {
         info.isSymbolicLink() ||
         (await realpath(directory)) !== directory
       ) {
-        throw new Error("Canvas storage must use real directories inside the workspace")
+        throw new Error("Sketchbook storage must use real directories inside the workspace")
       }
     }
     return directory
@@ -65,7 +65,7 @@ export class DocumentStore {
       if (!hasCode(error, "EEXIST")) throw error
       const info = await lstat(path)
       if (!info.isFile() || info.isSymbolicLink()) {
-        throw new Error("Canvas artifact .gitignore must be a regular file")
+        throw new Error("Sketchbook artifact .gitignore must be a regular file")
       }
     }
   }
@@ -77,11 +77,12 @@ export class DocumentStore {
     const path = join(directory, `${documentId}.json`)
     const info = await lstat(path)
     if (!info.isFile() || info.isSymbolicLink()) {
-      throw new Error("Canvas document must be a regular file, not a symlink")
+      throw new Error("Sketchbook document must be a regular file, not a symlink")
     }
     const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
     try {
-      if (!(await file.stat()).isFile()) throw new Error("Canvas document must be a regular file")
+      if (!(await file.stat()).isFile())
+        throw new Error("Sketchbook document must be a regular file")
       const buffer = Buffer.alloc(MAX_STORED_BYTES + 1)
       let length = 0
       while (length < buffer.length) {
@@ -91,11 +92,11 @@ export class DocumentStore {
         length += bytesRead
       }
       if (length > MAX_STORED_BYTES)
-        throw new Error("Stored canvas document exceeds the size limit")
+        throw new Error("Stored sketchbook document exceeds the size limit")
       signal?.throwIfAborted()
       const stored = validateStoredDocument(JSON.parse(buffer.toString("utf8", 0, length)))
       if (stored.documentId !== documentId)
-        throw new Error("Stored canvas document ID does not match its file")
+        throw new Error("Stored sketchbook document ID does not match its file")
       return stored
     } finally {
       await file.close()
@@ -122,16 +123,16 @@ export class DocumentStore {
         const current = await this.read(documentId, signal)
         if (current.revision !== snapshot.expectedRevision) {
           throw new Error(
-            `Revision conflict: expected ${snapshot.expectedRevision}, current ${current.revision}; use canvas_read before retrying`,
+            `Revision conflict: expected ${snapshot.expectedRevision}, current ${current.revision}; use sketchbook_read before retrying`,
           )
         }
         if (current.revision === Number.MAX_SAFE_INTEGER)
-          throw new Error("Canvas revision limit reached")
+          throw new Error("Sketchbook revision limit reached")
         revision = current.revision + 1
       } else {
         try {
           await lstat(path)
-          throw new Error("Generated canvas document ID already exists; create again")
+          throw new Error("Generated sketchbook document ID already exists; create again")
         } catch (error) {
           if (!hasCode(error, "ENOENT")) throw error
         }
@@ -166,7 +167,7 @@ export class DocumentStore {
           if (!hasCode(cleanupError, "ENOENT")) {
             throw new AggregateError(
               [error, cleanupError],
-              "Canvas write and temporary cleanup failed",
+              "Sketchbook write and temporary cleanup failed",
             )
           }
         }

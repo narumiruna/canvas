@@ -215,12 +215,12 @@ function Deck({ deck }: { deck: DiagramDeck }) {
 export function App({ session }: { session: Session }) {
   const { stored, status } = useDocument(session)
   useEffect(() => {
-    document.title = stored ? `${stored.document.title} — Pi Canvas` : "Pi Canvas"
+    document.title = stored ? `${stored.document.title} — Pi Sketchbook` : "Pi Sketchbook"
   }, [stored])
   return (
     <div className="viewer">
       <header className="viewer-header">
-        <span className="brand">Pi Canvas</span>
+        <span className="brand">Pi Sketchbook</span>
         <p role="status" className="connection-status">
           {status}
         </p>

@@ -2,13 +2,13 @@ import { mkdtemp, readFile, rm } from "node:fs/promises"
 import { createServer } from "node:http"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-import type { CanvasDocument } from "../src/document.js"
+import type { SketchbookDocument } from "../src/document.js"
 import { ViewerServer } from "../src/server.js"
 import { DocumentStore } from "../src/store.js"
 
 // This coordinator is test-only. The production viewer remains read-only and
 // serves real stored documents and built assets on its own random loopback port.
-const workspace = await mkdtemp(join(tmpdir(), "pi-canvas-browser-"))
+const workspace = await mkdtemp(join(tmpdir(), "pi-sketchbook-browser-"))
 const store = new DocumentStore(workspace)
 const viewer = new ViewerServer(store, new URL("../dist/web/", import.meta.url))
 const coordinator = createServer((request, response) => {
@@ -27,7 +27,7 @@ const coordinator = createServer((request, response) => {
       }
       response.end(
         await readFile(
-          new URL(`../skills/canvas-explain-diagrams/assets/${name}.json`, import.meta.url),
+          new URL(`../skills/sketchbook-explain-diagrams/assets/${name}.json`, import.meta.url),
         ),
       )
       return
@@ -42,7 +42,7 @@ const coordinator = createServer((request, response) => {
       if (Buffer.byteLength(body) > 2 * 1024 * 1024) throw new Error("Test fixture too large")
     }
     const input = JSON.parse(body) as {
-      document: CanvasDocument
+      document: SketchbookDocument
       documentId?: string
       expectedRevision?: number
     }
