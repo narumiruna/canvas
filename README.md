@@ -26,13 +26,8 @@ pi install ./
 Local installation requires the built `dist` assets and installed dependencies.
 Git-source installation is not supported in this release.
 
-After the owner confirms the npm name and publishes a release, install that release with:
-
-```sh
-pi install npm:pi-sketchbook
-```
-
-This command is not evidence that the package is published.
+The release workflow creates version tags and GitHub Releases without publishing packages to npmjs.
+Use the local installation steps above.
 Review package code before installation and project declarations before granting Pi project trust.
 
 ## Upgrade from Pi Canvas
