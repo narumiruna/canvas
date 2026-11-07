@@ -18,7 +18,7 @@ Source inspection and automated tests do not establish human visual acceptance o
 | Mermaid                         | Automated          | Version `12.3.0`; flowcharts, subgraphs, Chinese text, long labels, and every bundled example slide pass the Chromium suite.                        |
 | Hand-drawn output               | Source + Automated | Rough.js `4.6.6`; source trace below plus real rough paths, fixed-seed redraws, markers, styles, and isolated SVG IDs checked in Chromium.          |
 | KaTeX                           | Automated          | Version `0.19.1` with nested copies overridden; browser math/security checks pass and `npm audit` reports zero vulnerabilities.                     |
-| Skill resources                 | Automated          | Frontmatter, relative local links, strict schema fixtures, allowlist, and stable walkthrough structure pass all 15 tests in `tests/skill.test.ts`.  |
+| Skill resources                 | Automated          | Frontmatter, relative local links, strict schema fixtures, allowlist, and connected walkthrough checks pass `tests/skill.test.ts`.                  |
 | Built local and tarball loading | Automated          | `npm run test:package` loads actual local and extracted npm-tarball resources and viewer assets without external browser requests.                  |
 | Human visual acceptance         | Unverified         | Text size, hand-drawn style, responsive layout, and explanation clarity require user review.                                                        |
 | Remote access                   | Unverified         | SSH forwarding, containers, and WSLg/Windows browser routing need environment-specific checks.                                                      |
@@ -26,7 +26,7 @@ Source inspection and automated tests do not establish human visual acceptance o
 
 ## Completed checks
 
-Local verification produced these results:
+Earlier baseline verification produced these results:
 
 - `npm run ci` passed on Node.js `22.19.0` and `26.8.2`, including formatting/lint checks, 115 of 115 Vitest tests across six files, and production builds.
 - `npx vitest run tests/skill.test.ts` passed 15 of 15 tests independently on Node.js `26.8.2`.
@@ -45,6 +45,19 @@ Local verification produced these results:
 `npm pack --ignore-scripts --dry-run --json` confirmed the extension, viewer, fonts, third-party licenses, skill, and retained documentation are included, without source tests, workspace documents, or host implementation copies.
 A fresh `npm ci --ignore-scripts` also completed successfully.
 No registry publication or release operation is part of these checks.
+
+### Connected-slide update
+
+Verification on Node.js `26.8.2` on 2026-11-07 produced these results:
+
+- `npm test -- tests/skill.test.ts` passed 26 of 26 tests, including duplicate-overview and broken-connection mutations.
+- `npm run ci` passed formatting/lint, TypeScript checks, 126 of 126 Vitest tests across six files, and production builds.
+- The focused bundled-slide browser checks passed 2 of 2 tests; `npm run test:browser` passed all 26 Chromium tests.
+- `npm pack --dry-run` and `npm run test:package` passed, including local and tarball skill loading, viewer assets, and shutdown.
+
+The update changes explanations and authoring rules, not diagram sources, stable IDs, runtime code, or the document schema.
+Fixture-specific assertions check expected components, handoff steps, labels, and recovery paths; they do not validate the meaning of arbitrary decks.
+Reader comprehension and real-model behavior remain unverified; see the deck continuity review in [acceptance](acceptance.md).
 
 ## Fixture coverage
 

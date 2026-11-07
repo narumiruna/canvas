@@ -30,7 +30,8 @@ Expected assertions:
 - [ ] The transcript records whether the skill was loaded automatically, explicitly, or not at all.
 - [ ] The document passes the strict version-1 schema and content policy.
 - [ ] A main deck has overview → API → storage slides, each with a nonempty explanation.
-- [ ] Repeated components keep the same node IDs and names.
+- [ ] Each detail slide names its connection to the preceding context and explains a distinct part of the save path.
+- [ ] Repeated components keep the same node IDs, names, and meanings.
 - [ ] Prose, inline/display LaTeX, fenced TypeScript, Chinese text, a long label, and a subgraph are present.
 - [ ] Assumptions are marked as a teaching model instead of source-verified implementation facts.
 - [ ] Creation omits `documentId` and `expectedRevision`, and the result reports the generated ID and revision.
@@ -51,7 +52,8 @@ Expected assertions:
 
 - [ ] The document passes the strict version-1 schema and uses only flowcharts.
 - [ ] A main deck has overview → start → processing → end slides with corresponding explanations.
-- [ ] Repeated steps keep the same node IDs and labels, and the conflict exit is visible.
+- [ ] Each stage explains its inputs or outputs and keeps the handoff to the next stage visible.
+- [ ] Repeated steps keep the same node IDs, labels, and meanings, and the conflict exit is visible.
 - [ ] Prose, inline/display LaTeX, and fenced TypeScript are present.
 - [ ] The update reads the stored envelope and supplies its revision as `expectedRevision`.
 - [ ] The update submits a complete document and keeps existing stable block and slide IDs.
@@ -59,6 +61,35 @@ Expected assertions:
   - [ ] Record this as untested if no conflict is exercised.
 - [ ] No direct storage-file edits or unsupported content occur.
 - [ ] The final response reports the saved revision, viewer status, and rendering evidence separately.
+
+## Deck continuity review
+
+The user or documentation reviewer can perform this optional comprehension review after the updated examples pass the automated checks.
+Read each main deck in order and identify its main question, the connection at each transition, and the information each slide adds.
+The expected result is a connected explanation with no unrelated or redundant slides.
+
+The bundled examples provide these review references:
+
+| Slide                 | Connection                                                      | Contribution                                                                                  |
+| --------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Architecture overview | Establishes Client → Document API → Document Store.             | Defines the save path and backend boundary.                                                   |
+| API detail            | Expands the overview's Document API and retains Document Store. | Explains validation before the handler passes the request to storage.                         |
+| Storage detail        | Continues the preceding slide's Document Store handoff.         | Explains ordered writes, revision rejection, and atomic persistence; completes the save path. |
+| Process overview      | Establishes the replacement path and conflict loop.             | Defines successful completion without overwriting a newer revision.                           |
+| Input and start       | Focuses on the overview's Read and Edit steps.                  | Explains the document/revision inputs and hands the prepared replacement to validation.       |
+| Core processing       | Continues at Edit and hands success to Commit.                  | Explains validation, revision comparison, and recovery through Read.                          |
+| Output and end        | Continues at Commit.                                            | Explains the saved revision and separates persistence from rendering evidence.                |
+
+Check that names and meanings remain consistent when components reappear.
+A detail slide may omit earlier internals when its explanation identifies the change of focus.
+The independent one-slide reminders answer separate questions and do not extend the main sequences.
+Merge or remove redundant slides; move unrelated questions to separate decks.
+
+Static fixture checks protect these specific connections and responsibilities, not the meaning of arbitrary generated decks.
+Browser checks and their ignored `test-results/` captures provide rendering evidence, not comprehension acceptance.
+Reader comprehension and real-model behavior remain unverified; this review is not required to complete the agent's implementation tasks.
+Do not claim comprehension acceptance or reliable model output from automated checks, or release readiness from this change.
+Paid model evaluations and release operations still require the authorizations stated above.
 
 ## Human browser review
 

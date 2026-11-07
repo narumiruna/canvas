@@ -2,6 +2,8 @@
 
 Pi Canvas is a Pi package for local technical documents with Markdown, LaTeX, code, and hand-drawn Mermaid diagram decks.
 Each deck shows one diagram and its explanation at a time.
+Build each deck around one question: each slide must connect to the established context and add useful information.
+Keep repeated component names and meanings consistent; put independent questions in separate decks.
 Use the bottom arrows or labelled position dots to change slides; focused decks also support Left/Right keyboard keys.
 Each frame shows the current slide title once, with its deck name as context.
 
