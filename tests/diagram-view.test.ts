@@ -16,7 +16,15 @@ class TestElement extends EventTarget {
   isConnected = true
   displayed = true
   visibility = "visible"
-  style = { width: "", height: "", transform: "", transformOrigin: "" }
+  properties = new Map<string, string>()
+  style = {
+    width: "",
+    height: "",
+    transform: "",
+    transformOrigin: "",
+    setProperty: (name: string, value: string) => this.properties.set(name, value),
+    removeProperty: (name: string) => this.properties.delete(name),
+  }
   ownerDocument: { activeElement: TestElement | null } = { activeElement: null }
   svg: SVGSVGElement | null = null
   captures = new Set<number>()
@@ -210,6 +218,33 @@ describe("diagram controller", () => {
     controller.refresh(true)
     expect(state().scale).toBe(0.7)
     expect(state().cropped).toBe(false)
+    controller.destroy()
+  })
+
+  it("sizes the inline frame from natural dimensions and width, never zoom or observed height", () => {
+    const { viewport, stage, controller, observer, state } = fixture()
+    const height = () => viewport.properties.get("--diagram-content-height")
+    expect(height()).toBe("282px")
+    controller.reset()
+    controller.zoomBy(2)
+    expect(height()).toBe("282px")
+    viewport.clientHeight = 282
+    observer().notify()
+    expect(height()).toBe("282px")
+    expect(state().scale).toBe(2)
+    const before = stage.style.transform
+    observer().notify()
+    expect(stage.style.transform).toBe(before)
+    viewport.clientWidth = 432
+    observer().notify()
+    expect(height()).toBe("232px")
+    expect(state().scale).toBe(2)
+    stage.svg = svg(100, 50)
+    controller.refresh(true)
+    expect(height()).toBe("82px")
+    stage.svg = null
+    controller.refresh(true)
+    expect(height()).toBeUndefined()
     controller.destroy()
   })
 

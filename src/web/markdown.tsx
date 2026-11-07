@@ -1,3 +1,4 @@
+import type { Element, Root } from "hast"
 import { Component, type ReactNode } from "react"
 import ReactMarkdown, { defaultUrlTransform } from "react-markdown"
 import rehypeKatex from "rehype-katex"
@@ -7,6 +8,29 @@ import remarkMath from "remark-math"
 interface Props {
   markdown: string
   context: string
+  scope?: "article" | "explanation"
+}
+
+function rehypeHeadings({ scope }: { scope: Props["scope"] }) {
+  return (tree: Root) => {
+    const headings: Element[] = []
+    const collect = (parent: Root | Element) => {
+      for (const child of parent.children) {
+        if (child.type !== "element") continue
+        if (/^h[1-6]$/.test(child.tagName)) headings.push(child)
+        collect(child)
+      }
+    }
+    collect(tree)
+    if (!headings.length) return
+    const minimum = Math.min(...headings.map((heading) => Number(heading.tagName.slice(1))))
+    // Keep article H2+ unchanged. Legacy H1 blocks move down as one outline.
+    // Explanation headings belong below the slide H3, not in the article outline.
+    const offset = scope === "explanation" ? 4 - minimum : minimum === 1 ? 1 : 0
+    for (const heading of headings) {
+      heading.tagName = `h${Math.min(6, Number(heading.tagName.slice(1)) + offset)}`
+    }
+  }
 }
 
 function rehypeSafeKatex({ context }: { context: string }) {
@@ -89,14 +113,17 @@ class MarkdownBoundary extends Component<
   }
 }
 
-export function Markdown({ markdown, context }: Props) {
+export function Markdown({ markdown, context, scope = "article" }: Props) {
   return (
     <MarkdownBoundary key={markdown} markdown={markdown} context={context}>
       <div className="markdown">
         <ReactMarkdown
           skipHtml
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[[rehypeSafeKatex, { context }]]}
+          rehypePlugins={[
+            [rehypeHeadings, { scope }],
+            [rehypeSafeKatex, { context }],
+          ]}
           urlTransform={safeUrl}
           components={{
             img: ({ alt }) => <span className="image-omitted">[Image omitted: {alt ?? ""}]</span>,

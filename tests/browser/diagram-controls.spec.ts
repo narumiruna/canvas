@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page, test } from "@playwright/test"
-import { documentFixture, getDeck, rendered, save } from "./helpers.js"
+import { documentFixture, getDeck, rendered, save, selectSlide } from "./helpers.js"
 
 function wideSource() {
   return `flowchart LR\n${Array.from(
@@ -100,6 +100,77 @@ test("resize refits a complete graph and preserves manual zoom until Fit is sele
   await expectGraphInsideViewport(deck)
 })
 
+for (const width of [390, 1280]) {
+  test(`inline frames follow content, stay bounded, and preserve the fullscreen camera at ${width}px`, async ({
+    page,
+    request,
+  }) => {
+    await rejectFullscreen(page)
+    await page.setViewportSize({ width, height: 960 })
+    const content = documentFixture()
+    const slides = getDeck(content, "first").slides
+    slides[0].mermaid = "flowchart LR\n A[Input] --> B[Output]"
+    slides[1].mermaid = `flowchart TD\n${Array.from({ length: 10 }, (_, i) => `N${i}[Step ${i}] --> N${i + 1}`).join("\n")}`
+    slides[2].mermaid = `flowchart LR\n${Array.from({ length: 3 }, (_, i) => `A${i}[Input ${i}] --> B${i}[Check ${i}] --> C${i}[Output ${i}]`).join("\n")}`
+    const errors: string[] = []
+    page.on("pageerror", (error) => errors.push(error.message))
+    await page.goto((await save(request, content)).url)
+    const deck = page.locator('[data-block-id="first"]')
+    const viewport = deck.locator(".diagram-viewport")
+    const height = () => viewport.evaluate((node) => node.clientHeight)
+    await rendered(deck)
+    const inlineHeight = await height()
+    expect(inlineHeight).toBeGreaterThanOrEqual(96)
+    expect(inlineHeight).toBeLessThan(180)
+    const spacing = await viewport.evaluate((node) => {
+      const style = getComputedStyle(node)
+      return [style.marginTop, style.marginBottom]
+    })
+    expect(spacing).toEqual(["0px", "0px"])
+    const controls = await deck.locator(".diagram-controls").boundingBox()
+    const frame = await viewport.boundingBox()
+    expect(frame?.y).toBe((controls?.y ?? 0) + (controls?.height ?? 0))
+    await expectGraphInsideViewport(deck)
+    await control(deck, "Reset zoom").click()
+    await control(deck, "Zoom in").click()
+    await expect(zoom(deck)).toHaveText("125%")
+    expect(await height()).toBe(inlineHeight)
+    await control(deck, "Show source").click()
+    await expect(deck.locator(".diagram-source code")).toHaveText(slides[0].mermaid)
+    await control(deck, "Show diagram").click()
+    await expect(zoom(deck)).toHaveText("125%")
+    expect(await height()).toBe(inlineHeight)
+    const graphic = await deck.locator(".diagram-svg > svg").elementHandle()
+    await control(deck, "Fullscreen").click()
+    await expect(page.getByRole("dialog")).toBeVisible()
+    await expect.poll(height).toBeGreaterThan(700)
+    await expect(zoom(deck)).toHaveText("125%")
+    expect(await graphic?.evaluate((node) => node.isConnected)).toBe(true)
+    await page.keyboard.press("Escape")
+    await expect(page.getByRole("dialog")).toHaveCount(0)
+    await expect.poll(height).toBe(inlineHeight)
+    await expect(zoom(deck)).toHaveText("125%")
+    await selectSlide(deck, "detail")
+    await rendered(deck)
+    await expect.poll(height).toBe(576)
+    await expectGraphInsideViewport(deck)
+    await selectSlide(deck, "overview")
+    await rendered(deck)
+    await expect.poll(height).toBe(inlineHeight)
+    await selectSlide(deck, "end")
+    await rendered(deck)
+    const responsiveHeight = await height()
+    await page.setViewportSize({ width: width === 390 ? 1280 : 390, height: 960 })
+    await expect.poll(height).not.toBe(responsiveHeight)
+    await expectGraphInsideViewport(deck)
+    // Let ResizeObserver settle after replacing and resizing the graphs.
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    )
+    expect(errors).toEqual([])
+  })
+}
+
 test("drag and modified wheel control the camera; normal wheel scrolls and source stays inert", async ({
   page,
   request,
@@ -196,15 +267,26 @@ test("native fullscreen uses the same SVG and restores focus after browser exit"
   await rendered(deck)
   test.skip(!(await page.evaluate(() => document.fullscreenEnabled)), "Native API unavailable")
   const graphic = await deck.locator(".diagram-svg > svg").elementHandle()
+  const inlineHeight = await deck.locator(".diagram-viewport").evaluate((node) => node.clientHeight)
+  await control(deck, "Reset zoom").click()
+  await control(deck, "Zoom in").click()
   const button = control(deck, "Fullscreen")
   await button.click()
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement?.className))
     .toBe("diagram")
   await expect(control(deck, "Exit fullscreen")).toBeVisible()
+  await expect
+    .poll(() => deck.locator(".diagram-viewport").evaluate((node) => node.clientHeight))
+    .toBeGreaterThan(inlineHeight)
+  await expect(zoom(deck)).toHaveText("125%")
   expect(await graphic?.evaluate((node) => node.isConnected)).toBe(true)
   await page.evaluate(() => document.exitFullscreen())
   await expect(control(deck, "Fullscreen")).toBeFocused()
+  await expect
+    .poll(() => deck.locator(".diagram-viewport").evaluate((node) => node.clientHeight))
+    .toBe(inlineHeight)
+  await expect(zoom(deck)).toHaveText("125%")
   await expect(page.getByRole("dialog")).toHaveCount(0)
   expect(await page.evaluate(() => document.body.style.overflow)).toBe("")
 })

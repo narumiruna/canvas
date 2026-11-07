@@ -40,6 +40,16 @@ type SketchbookDocument = {
 Markdown supports prose, inline math such as `$r + 1$`, display math between `$$` lines, and fenced code.
 Use a diagram deck even for one diagram; a Mermaid Markdown fence is not a second diagram format.
 
+## Article headings and emphasis
+
+- `document.title` owns the page H1; do not repeat it as a Markdown H1 or an opening subject heading.
+- Start article Markdown headings at H2 and use lower levels for subsections.
+- `deck.title` becomes a stable H2 chapter heading.
+  - The active slide title becomes H3 and changes with slide navigation.
+  - Use no headings in short slide explanations; if needed, start at H4 so they cannot compete with chapter or slide headings.
+- Put CJK punctuation outside Markdown emphasis delimiters when adjacent text can prevent parsing.
+  - Use `**資料範圍**：依` rather than `**資料範圍：**依` and check that no literal emphasis delimiters appear in the viewer.
+
 ## Content policy
 
 - Begin each diagram with `flowchart` and a direction such as `LR` or `TD`.
@@ -61,6 +71,16 @@ Do not try to override these settings.
 Omit both `documentId` and `expectedRevision` for creation.
 The result includes `documentId`, `revision`, `path`, a `blocks` summary, and `renderingVerified: false`.
 A successful write means validation and persistence succeeded, not that Mermaid or LaTeX rendered.
+
+Keep these evidence states separate in the handoff:
+
+- **Saved**: the write returned an ID and revision.
+- **Rendered**: browser evidence shows that the inspected Markdown, Mermaid, and math rendered without errors.
+- **Readable**: the visual checks cover the full article and every slide at desktop and 390px, including initial fitted labels.
+- **Content-correct**: source checks and article review support the claims, concept order, and caveats.
+- **Human acceptance**: a person explicitly accepted the result; agent checks do not establish this state.
+
+Name the checked revision, viewport widths, and slide coverage, and mark missing evidence as unverified.
 
 ### Read and replace
 

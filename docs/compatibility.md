@@ -72,14 +72,45 @@ The rename keeps document schema version 1 and does not move existing workspace 
 Node.js `22.19.0` was not rerun for this rename; its results above are earlier baseline evidence.
 GitHub repository renaming, npm name ownership, publication, and human acceptance remain external checks in [acceptance](acceptance.md).
 
+### Article structure and readability
+
+Verification on macOS with Node.js `26.11.1`, Pi `1.5.0`, and Playwright `1.65.0` on 2026-11-07 produced these results:
+
+- `npm run ci` passed formatting, TypeScript checks, 142 of 142 unit tests across seven files, and production builds.
+- `npm run test:browser` passed 37 of 37 Chromium tests, including every slide in three complete articles at 390px and 1440px.
+- `npm pack --dry-run` and `npm run test:package` passed local and extracted-tarball discovery, tool execution, browser assets, and shutdown.
+- `npm audit` reported zero vulnerabilities.
+- Stable H2 deck chapters and H3 slide titles, legacy Markdown heading normalization, explanation heading scope, 16px explanation text, technical-name wrapping, and compact bounded frames passed regression checks.
+- Existing camera, source-text, SVG sanitization, native/fallback fullscreen, and lifecycle checks remain passing.
+
+The complete-article cases cover all nine bundled slides and all five slides in `tests/fixtures/agent-substrate.json` at both widths, for 28 slide/viewport checks.
+They measure every SVG text label in the default fitted view, before Reset or Zoom.
+
+| Article                    | Minimum label at 390px | Minimum label at 1440px |
+| -------------------------- | ---------------------- | ----------------------- |
+| Architecture example       | 12.62px                | 14.11px                 |
+| Process example            | 12.37px                | 12.37px                 |
+| Agent Substrate regression | 12.34px                | 12.88px                 |
+
+`test-results/article-review-*/` contains per-slide captures, complete initial/final pages, heading outlines, and label/frame measurements.
+The capture helper waits for fonts and paint frames and checks PNG pixels inside every diagram viewport, so a blank full-page frame cannot pass only because an SVG exists in the DOM.
+An independent agent review inspected the bundled examples and code; the main agent inspected the Agent Substrate article and all five slides at both widths.
+These checks do not establish human visual or comprehension acceptance.
+Node.js 22.19.0 was not rerun locally for this update; the existing CI matrix provides a separate check.
+
+On macOS, the existing exact-path tests require a physical temporary-directory path.
+Run `export TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"` before the checks when TMPDIR contains the `/var` alias for `/private/var`.
+The alias otherwise causes baseline path-equality failures; this update does not change storage path behavior.
+
 ## Fixture coverage
 
-[Architecture walkthrough](../skills/sketchbook-explain-diagrams/assets/architecture-walkthrough.json) provides overview, API, and storage slides with stable component IDs and labels.
-It includes subgraphs, Chinese text, a long label, and an independent one-slide deck.
-[Process walkthrough](../skills/sketchbook-explain-diagrams/assets/process-walkthrough.json) provides overview, start, processing, and end slides plus an independent conflict deck.
-Both include Markdown prose, inline/display LaTeX, and fenced TypeScript.
-All nine bundled slides are covered by browser rendering checks.
-The skill test validates data and policy, not Mermaid parsing or visual quality.
+[Architecture walkthrough](../skills/sketchbook-explain-diagrams/assets/architecture-walkthrough.json) provides overview, API, and storage slides with stable component IDs and short labels.
+It includes subgraphs, Chinese text, and an independent one-slide deck.
+[Process walkthrough](../skills/sketchbook-explain-diagrams/assets/process-walkthrough.json) provides overview, input, processing, and result slides plus an independent conflict deck.
+Both include Markdown prose, inline/display LaTeX, fenced TypeScript, an opening H2, and a final conclusion.
+All nine bundled slides are covered at narrow and desktop widths, alongside the source-linked Agent Substrate regression fixture.
+Long-label and large-graph stress cases remain in separate browser fixtures.
+The skill test protects known outline and continuity regressions, not arbitrary narrative quality.
 
 ## Rendering source trace
 

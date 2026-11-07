@@ -2,10 +2,13 @@
 
 Pi Sketchbook is a Pi package for local technical documents with Markdown, LaTeX, code, and hand-drawn Mermaid diagram decks.
 Each deck shows one diagram and its explanation at a time.
+Review the complete article outline before reviewing its decks.
 Build each deck around one question: each slide must connect to the established context and add useful information.
+Define required terms before use, remove repeated prose, and conclude each main topic.
 Keep repeated component names and meanings consistent; put independent questions in separate decks.
 Use the bottom arrows or labelled position dots to change slides; focused decks also support Left/Right keyboard keys.
-Each frame shows the current slide title once, with its deck name as context.
+The document title is the page H1, each deck has a stable H2 chapter title, and its current slide uses H3.
+Matching deck and slide titles appear once visually.
 
 ## Install
 
@@ -66,15 +69,27 @@ The skill includes complete [architecture](skills/sketchbook-explain-diagrams/as
 For updates, read first and use the returned revision.
 On conflict, read again and apply the change to the current document.
 A successful write confirms validation and storage, not browser rendering.
-The [document format](skills/sketchbook-explain-diagrams/references/document-format.md) defines fields, IDs, limits, and tool details.
+The [document format](skills/sketchbook-explain-diagrams/references/document-format.md) defines fields, IDs, limits, heading roles, and tool details.
+
+### Article review
+
+- Start article Markdown headings at H2; do not repeat the document title.
+  - Legacy Markdown blocks with H1 are shifted down one heading level when rendered; saved JSON is unchanged.
+  - Explanation headings are placed below the slide H3, starting at H4.
+- Review the complete heading outline, concept order, first definitions, repeated text, and conclusion before checking slide transitions.
+- Inspect the full page and every slide at desktop and 390-pixel widths before claiming visual review.
+  - Check default Fit label size, unused frame space, text wrapping, emphasis, and diagram meaning.
+  - Report saving, rendering, readability checks, and human acceptance separately.
+- Use short labels and compact graphs that can be read without Reset or Zoom.
+  - Long-label and large-graph stress tests do not define suitable teaching layouts.
 
 ## Rendering and security
 
 - Only Mermaid `flowchart` diagrams are supported, including subgraphs.
   - The viewer uses Mermaid's `handDrawn` look through Rough.js with a fixed nonzero seed.
   - Frontmatter, directives, node metadata (`@{...}`), click actions, HTML, images, and icons are not supported.
-  - Diagrams start fitted inside a bounded frame without upscaling.
-  - Fit can make large graphs small; use Reset zoom for native-size labels, then zoom or drag within the frame.
+  - Diagrams start fitted without upscaling; inline frame height follows the SVG aspect ratio and available width, within a bounded height.
+  - Fit can still make large graphs small. Rework a teaching graph that is unreadable at its default scale; Reset, Zoom, and panning remain available for inspecting large graphs.
 - Markdown supports inline/display LaTeX and fenced code, but not raw HTML or images.
   - Mermaid uses strict security and disables HTML labels; generated SVG is sanitized.
   - KaTeX uses `trust: false`, `maxExpand: 1000`, and `maxSize: 20`.

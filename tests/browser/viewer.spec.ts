@@ -244,6 +244,117 @@ for (const width of [390, 1280]) {
   })
 }
 
+for (const width of [390, 1280]) {
+  test(`article headings stay stable across slide switches and legacy Markdown at ${width}px`, async ({
+    page,
+    request,
+  }) => {
+    const document = documentFixture()
+    const intro = document.blocks.find((block) => block.id === "intro")
+    const legacy = document.blocks.find((block) => block.id === "between")
+    const tail = document.blocks.find((block) => block.id === "tail")
+    if (intro?.type !== "markdown" || legacy?.type !== "markdown" || tail?.type !== "markdown")
+      throw new Error("Missing article blocks")
+    intro.markdown = "## Article guide\n\n### Guide detail"
+    legacy.markdown =
+      "# Legacy **chapter**\n\n## Legacy detail\n\n###### Deep detail\n\n```md\n# Literal source\n```"
+    tail.markdown = "## Conclusion"
+    const deck = getDeck(document, "first")
+    deck.title = "Overview"
+    deck.slides[0].explanationMarkdown =
+      "# Explanation topic\n\n## Explanation detail\n\n###### Explanation depth\n\nNormal **body text**."
+    deck.slides[1].explanationMarkdown = "### Detail topic\n\n#### Detail explanation"
+    await page.setViewportSize({ width, height: 960 })
+    const fixture = await save(request, document)
+    const loaded = page.waitForResponse(
+      (response) => response.url().includes("/api/documents/") && response.status() === 200,
+    )
+    await page.goto(fixture.url)
+    // Rendering must not change the authored Markdown in the stored response.
+    expect((await (await loaded).json()).document).toEqual(document)
+    const first = page.locator('[data-block-id="first"]')
+    await rendered(first)
+    await expect(page.locator("main h1")).toHaveText([document.title])
+    const chapters = ["Article guide", "Overview", "Legacy chapter", "Deck second", "Conclusion"]
+    await expect(page.locator("main h2")).toHaveText(chapters)
+    await expect(page.locator('[data-block-id="between"] h3')).toHaveText("Legacy detail")
+    await expect(page.locator('[data-block-id="between"] h6')).toHaveText("Deep detail")
+    await expect(page.locator('[data-block-id="between"] pre code')).toHaveText(
+      "# Literal source\n",
+    )
+    await expect(first).toHaveAccessibleName("Overview")
+    await expect(first.locator(".deck-heading h2")).toHaveText("Overview")
+    await expect(first.locator(".deck-heading h3")).toHaveText("Overview")
+    await expect(first.locator(".deck-heading h3")).toHaveClass("visually-hidden")
+    const hiddenSlide = await first.locator(".deck-heading h3").boundingBox()
+    expect(hiddenSlide?.width).toBe(1)
+    expect(hiddenSlide?.height).toBe(1)
+    await expect(
+      first.locator(".slide-explanation h1, .slide-explanation h2, .slide-explanation h3"),
+    ).toHaveCount(0)
+    await expect(first.locator(".slide-explanation h4")).toHaveText("Explanation topic")
+    await expect(first.locator(".slide-explanation h5")).toHaveText("Explanation detail")
+    await expect(first.locator(".slide-explanation h6")).toHaveText("Explanation depth")
+    await selectSlide(first, "detail")
+    await rendered(first)
+    await expect(page.locator("main h1")).toHaveText([document.title])
+    await expect(page.locator("main h2")).toHaveText(chapters)
+    await expect(first).toHaveAccessibleName("Overview")
+    await expect(first.locator(".deck-heading h3")).toHaveText("Detail")
+    await expect(first.locator(".deck-heading h3")).not.toHaveClass("visually-hidden")
+    await expect(first.locator(".slide-explanation h4")).toHaveText("Detail topic")
+    await expect(first.locator(".slide-explanation h5")).toHaveText("Detail explanation")
+    await selectSlide(first, "overview")
+    await expect(page.locator("main h2")).toHaveText(chapters)
+    await expect(first.locator(".deck-heading h3")).toHaveClass("visually-hidden")
+  })
+}
+
+test("mobile definitions keep technical names intact and explanations use body text", async ({
+  page,
+  request,
+}) => {
+  const document = documentFixture()
+  const intro = document.blocks.find((block) => block.id === "intro")
+  const tail = document.blocks.find((block) => block.id === "tail")
+  if (intro?.type !== "markdown" || tail?.type !== "markdown")
+    throw new Error("Missing text blocks")
+  intro.markdown =
+    "## AgentSession and RuntimeHost\n\nArticle body text.\n\n| Term | Definition |\n| --- | --- |\n| **AgentSession** | One active conversation and its current state. |\n| **RuntimeHost** | Owns the runtime state and available services. |"
+  const long = "LongTechnicalIdentifier".repeat(20)
+  tail.markdown = `## ${long}\n\n${long}\n\n| Term | Definition |\n| --- | --- |\n| ${long} | Contained table text. |`
+  getDeck(document, "first").slides[0].explanationMarkdown = "AgentSession is **normal body text**."
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto((await save(request, document)).url)
+  const first = page.locator('[data-block-id="first"]')
+  await rendered(first)
+  const type = (node: Element) => {
+    const style = getComputedStyle(node)
+    return { size: style.fontSize, color: style.color, lineHeight: style.lineHeight }
+  }
+  const bodyType = await page.locator('[data-block-id="intro"] p').evaluate(type)
+  expect(await first.locator(".slide-explanation p").evaluate(type)).toEqual(bodyType)
+  expect(Number.parseFloat(bodyType.size)).toBeGreaterThanOrEqual(16)
+  const names = await page.locator('[data-block-id="intro"] td strong').evaluateAll((nodes) =>
+    nodes.map((node) => {
+      const range = window.document.createRange()
+      range.selectNodeContents(node)
+      return range.getClientRects().length
+    }),
+  )
+  expect(names).toEqual([1, 1])
+  const headingLines = await page.locator('[data-block-id="intro"] h2').evaluate((node) => {
+    const range = window.document.createRange()
+    range.setStart(node.firstChild as Text, 0)
+    range.setEnd(node.firstChild as Text, "AgentSession".length)
+    return range.getClientRects().length
+  })
+  expect(headingLines).toBe(1)
+  expect(await page.evaluate(() => window.document.documentElement.scrollWidth <= innerWidth)).toBe(
+    true,
+  )
+})
+
 test("conditional polling keeps stable selection and chooses the nearest old slide after deletion", async ({
   page,
   request,
@@ -410,11 +521,13 @@ for (const name of ["architecture-walkthrough", "process-walkthrough"]) {
       for (const slide of block.slides) {
         if (block.slides.length > 1) await selectSlide(deck, slide.id)
         await rendered(deck)
-        await expect(deck.getByRole("heading", { name: slide.title, exact: true })).toBeVisible()
+        await expect(
+          deck.getByRole("heading", { level: 3, name: slide.title, exact: true }),
+        ).toHaveCount(1)
         await expect(deck.getByRole("alert")).toHaveCount(0)
         expect(await deck.locator("svg .rough-node path").count()).toBeGreaterThan(0)
         const viewport = await deck.locator(".diagram-viewport").boundingBox()
-        expect(viewport?.height).toBeLessThanOrEqual(352)
+        expect(viewport?.height).toBeLessThanOrEqual(576)
         await deck.getByRole("button", { name: "Reset zoom", exact: true }).click()
         const textScale = await deck
           .locator(".diagram-svg svg text")
