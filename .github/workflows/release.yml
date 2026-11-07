@@ -31,6 +31,3 @@ jobs:
         with:
           github-token: ${{ secrets.PAT_TOKEN }}
           publish-script: npm run release
-        env:
-          # Bootstrap the first publication; remove the secret after configuring npm OIDC.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

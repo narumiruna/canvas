@@ -157,12 +157,9 @@ The package metadata now names `narumiruna/sketchbook`; the source rename does n
 1. Rename the GitHub repository to `narumiruna/sketchbook` and update checkout remotes after that owner action.
    - Confirm the repository URL in `package.json` resolves before release.
    - Confirm availability and ownership of the npm name `pi-sketchbook` before publication.
-2. Configure npm authentication before an authorized release run.
-   - `PAT_TOKEN` authenticates Changesets to GitHub only; it cannot publish to npm. Confirm GitHub Actions has the required pull-request permissions.
-   - For the first publication of `pi-sketchbook`, create a short-lived granular npm access token. Select **Read and write (publish and stage)**, **All Packages**, and **Bypass two-factor authentication**. Access to all packages is needed to create the new unscoped package.
-   - Store it as the repository Actions secret `NPM_TOKEN`. The release workflow passes it as `NODE_AUTH_TOKEN` only to the Changesets step, not to `npm ci`.
-   - After the first publication, configure an [npm trusted publisher](https://docs.npmjs.com/trusted-publishers/) for owner `narumiruna`, repository `sketchbook`, and workflow filename `release.yml`, with no environment name. Enable direct publishing with `npm publish`.
-   - Revoke the bootstrap token and delete `NPM_TOKEN` after trusted publishing is configured. Keep `id-token: write` in the workflow; later publications use OIDC without an npm token.
+2. Configure npm trusted publishing for the intended repository and `release.yml`.
+   - Confirm GitHub Actions has the required pull-request permissions.
+   - Review the existing release workflow's `PAT_TOKEN` requirement and supply an appropriate owner-managed credential or approved replacement.
    - Never provide secrets in chat, documents, example assets, or commits.
 3. Review CI, isolated local/tarball installation evidence, package contents, license, and dependency audit.
 4. Obtain explicit release authorization before publishing, creating or pushing a release tag, or dispatching a release workflow.
