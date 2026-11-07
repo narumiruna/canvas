@@ -60,110 +60,101 @@ section {
   margin-block: 1.8rem;
 }
 .deck {
-  border: 1px solid #c8cdd1;
-  border-radius: 0.6rem;
+  border: 1px solid #d8e1ed;
+  border-radius: 0.75rem;
   background: #fff;
-  padding: 1.25rem;
 }
-.deck h2 {
-  margin-top: 0;
-}
-.deck-navigation {
+.deck-heading {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
   align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e3e5;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5ebf3;
 }
-button,
-select {
-  font: inherit;
-  color: inherit;
-  border: 1px solid #9ca9b3;
-  border-radius: 0.25rem;
-  background: #fff;
-  padding: 0.25rem 0.55rem;
+.deck-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
 }
-.deck-navigation select {
-  flex: 1 1 10rem;
-  min-width: 0;
-  max-width: 100%;
+.deck-context {
+  margin: 0 0 0.25rem;
+  color: #718199;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.deck-kind {
+  flex-shrink: 0;
+  padding: 0.2rem 0.6rem;
+  border: 1px solid #e1e7f0;
+  border-radius: 0.4rem;
+  color: #718199;
+  font-size: 0.7rem;
 }
 button {
+  font: inherit;
+  color: inherit;
   cursor: pointer;
 }
 button:hover:not(:disabled) {
   background: #e8f0f7;
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
 }
 :focus-visible {
   outline: 3px solid #2167a4;
-  outline-offset: 4px;
+  outline-offset: 3px;
 }
-.slide-count {
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.slide-content {
-  min-height: 26rem;
-  overflow-anchor: none;
-}
-.deck-carousel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: center;
-}
-.deck-carousel-multiple {
-  grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
-  gap: 0.5rem;
-}
+.slide-content,
 .deck-viewport {
+  min-width: 0;
+}
+.slide-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.65rem 1rem 0.4rem;
+  border: 0;
+}
+.slide-dots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   min-width: 0;
 }
 .deck-arrow {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 2.75rem;
   height: 2.75rem;
   padding: 0;
-  border-radius: 50%;
-  color: #2167a4;
-  border-color: #b1c4d4;
-  box-shadow: 0 1px 3px #202a3510;
-}
-.deck-arrow:disabled {
-  opacity: 0.35;
-  box-shadow: none;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #536b8a;
+  background: transparent;
 }
 .deck-arrow-icon {
-  width: 0.7rem;
-  height: 0.7rem;
+  width: 0.65rem;
+  height: 0.65rem;
+  margin-right: 0.2rem;
   border-top: 2px solid currentColor;
   border-right: 2px solid currentColor;
   transform: rotate(45deg);
-  margin-right: 0.2rem;
 }
 .deck-arrow-previous .deck-arrow-icon {
-  transform: rotate(-135deg);
   margin-right: 0;
   margin-left: 0.2rem;
-}
-.slide-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  min-width: 0;
-  margin: 0 0 1rem;
-  padding: 0;
-  border: 0;
+  transform: rotate(-135deg);
 }
 .slide-dot {
   display: grid;
   place-items: center;
+  flex-shrink: 0;
   width: 2rem;
   height: 2rem;
   padding: 0;
@@ -172,39 +163,205 @@ button:disabled {
   background: transparent;
 }
 .slide-dot span {
-  width: 0.65rem;
-  height: 0.65rem;
-  border: 1.5px solid #9ca9b3;
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 1px solid #9caec7;
   border-radius: 50%;
 }
 .slide-dot[aria-current="step"] span {
-  border-color: #2167a4;
-  background: #2167a4;
+  border-color: #4c70bd;
+  background: #4c70bd;
+  box-shadow: 0 0 0 3px #edf2ff;
+}
+.slide-count {
+  flex-shrink: 0;
+  margin-left: 0.4rem;
+  color: #7b8ba2;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.slide-explanation {
+  margin: 0 1.25rem;
+  padding: 0.8rem 0 1rem;
+  border-top: 1px solid #e8edf4;
+  color: #53647c;
+  font-size: 0.9rem;
 }
 .diagram {
-  min-height: 17rem;
+  --diagram-height: clamp(15rem, 38vh, 22rem);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  margin: 0;
+  background: #fff;
+}
+.diagram-controls {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border: 0;
+  border-bottom: 1px solid #e8edf4;
+  background: #fcfdff;
+}
+.diagram-controls output {
+  min-width: 2.75rem;
+  color: #5b6e88;
+  font-size: 0.75rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.diagram-control-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.diagram-control {
   display: grid;
-  align-content: center;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  color: #536b8a;
+  background: #f0f4fa;
+}
+.diagram-control svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.diagram-control[aria-pressed="true"] {
+  color: #315caa;
+  background: #e5edfd;
+}
+.diagram-tooltip {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 0.45rem);
+  left: 50%;
+  display: none;
+  width: max-content;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.3rem;
+  background: #26354b;
+  color: #fff;
+  font-size: 0.7rem;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+.diagram-control-wrap:hover .diagram-tooltip,
+.diagram-control-wrap:focus-within .diagram-tooltip {
+  display: block;
+}
+.diagram-control-wrap:first-child .diagram-tooltip {
+  left: 0;
+  transform: none;
+}
+.diagram-control-wrap:last-child .diagram-tooltip {
+  right: 0;
+  left: auto;
+  transform: none;
+}
+.diagram-viewport {
+  position: relative;
+  height: var(--diagram-height);
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  cursor: grab;
+  touch-action: pan-y;
+}
+.diagram-viewport:active {
+  cursor: grabbing;
+}
+.diagram-viewport[hidden],
+.diagram-source[hidden] {
+  display: none;
 }
 .diagram-svg {
-  overflow: auto;
-  max-width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
 }
-.diagram-svg svg {
+.diagram-svg > svg {
   display: block;
   width: 100%;
-  height: auto;
-  min-width: 16rem;
-  margin-inline: auto;
+  height: 100%;
+  max-width: none;
 }
 .diagram-svg svg text {
   font-family: system-ui, sans-serif;
+}
+.diagram-source {
+  height: var(--diagram-height);
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  background: #f5f7fb;
+  font-size: 0.8rem;
+}
+.diagram-pan-hint {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  color: #7e8ca0;
+  font-size: 0.7rem;
+}
+.diagram-viewport > [role="status"] {
+  position: absolute;
+  inset: 1rem;
+  display: grid;
+  place-items: center;
+  color: #7e8ca0;
+}
+.diagram:fullscreen,
+.diagram.diagram-expanded {
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.diagram:fullscreen .diagram-viewport,
+.diagram.diagram-expanded .diagram-viewport,
+.diagram:fullscreen .diagram-source,
+.diagram.diagram-expanded .diagram-source {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.diagram:fullscreen .diagram-viewport,
+.diagram.diagram-expanded .diagram-viewport {
+  touch-action: none;
+}
+.diagram-status:not(:empty) {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  color: #7e8ca0;
+  font-size: 0.75rem;
 }
 .markdown {
   overflow-wrap: anywhere;
 }
 .markdown > :first-child {
   margin-top: 0.8rem;
+}
+.slide-explanation .markdown > :first-child {
+  margin-top: 0;
+}
+.slide-explanation .markdown > :last-child {
+  margin-bottom: 0;
 }
 .markdown pre,
 .render-error pre {
@@ -248,6 +405,14 @@ blockquote {
   font-size: 0.9rem;
   overflow-wrap: anywhere;
 }
+.diagram > .render-error {
+  max-height: 6rem;
+  padding: 0.5rem 1rem;
+  overflow: auto;
+}
+.diagram > .render-error p {
+  margin: 0;
+}
 .render-error code {
   display: block;
   color: #202a35;
@@ -265,16 +430,17 @@ blockquote {
   .connection-status {
     text-align: left;
   }
-  .deck {
-    padding: 0.8rem;
+  .deck-heading {
+    padding: 0.85rem;
   }
-  .deck-navigation {
-    gap: 0.4rem;
+  .slide-explanation {
+    margin-inline: 0.85rem;
   }
-  .deck-carousel-multiple {
+  .slide-pagination {
+    padding-inline: 0.5rem;
+  }
+  .diagram-controls {
     gap: 0.25rem;
-  }
-  .deck-navigation label {
-    display: none;
+    padding-inline: 0.5rem;
   }
 }

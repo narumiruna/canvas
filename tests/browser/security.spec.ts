@@ -183,7 +183,7 @@ test("browser defense rejects config overrides and sanitizes encoded labels and 
   const second = page.locator('[data-block-id="second"]')
   await rendered(second)
   await expect(second.locator("img, image, foreignObject, script, a, [onerror]")).toHaveCount(0)
-  const svg = await second.locator("svg").innerHTML()
+  const svg = await second.locator(".diagram-svg > svg").innerHTML()
   expect(svg).not.toMatch(/url\([^)]*https?:/i)
   expect(external).toEqual([])
 })

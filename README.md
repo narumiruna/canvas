@@ -2,7 +2,8 @@
 
 Pi Canvas is a Pi package for local technical documents with Markdown, LaTeX, code, and hand-drawn Mermaid diagram decks.
 Each deck shows one diagram and its explanation at a time.
-Use the side arrows, position dots, or title selector to change slides; focused decks also support keyboard arrow keys.
+Use the bottom arrows or labelled position dots to change slides; focused decks also support Left/Right keyboard keys.
+Each frame shows the current slide title once, with its deck name as context.
 
 ## Install
 
@@ -57,7 +58,8 @@ The [document format](skills/canvas-explain-diagrams/references/document-format.
 - Only Mermaid `flowchart` diagrams are supported, including subgraphs.
   - The viewer uses Mermaid's `handDrawn` look through Rough.js with a fixed nonzero seed.
   - Frontmatter, directives, node metadata (`@{...}`), click actions, HTML, images, and icons are not supported.
-  - Wide diagrams keep native-size labels and scroll horizontally instead of shrinking below a readable text size.
+  - Diagrams start fitted inside a bounded frame without upscaling.
+  - Fit can make large graphs small; use Reset zoom for native-size labels, then zoom or drag within the frame.
 - Markdown supports inline/display LaTeX and fenced code, but not raw HTML or images.
   - Mermaid uses strict security and disables HTML labels; generated SVG is sanitized.
   - KaTeX uses `trust: false`, `maxExpand: 1000`, and `maxSize: 20`.
@@ -68,6 +70,23 @@ The [document format](skills/canvas-explain-diagrams/references/document-format.
   - Treat the full viewer URL as private and keep secrets out of documents.
 - A parse error is shown locally with source details instead of removing the rest of the document.
   - Rendering runs on the browser main thread; error handling is not CPU isolation.
+
+## Diagram controls
+
+The icon toolbar provides Zoom out, Zoom in, Fit to screen, Reset zoom, Fullscreen, and Show source.
+Hover or focus a button to show its label.
+Show source displays inert text, not executable HTML.
+
+- Fit shows the complete graph; Reset restores 100% native size.
+- Zoom is limited to 400%; the lower limit is 25% or the fitted scale when smaller.
+- Drag with a mouse or pen to pan a large graph.
+  - Ctrl/Command + wheel zooms at the pointer; an ordinary wheel continues document scrolling.
+  - Inline touch gestures remain available for document scrolling; pinch zoom is not implemented.
+- Focus the diagram viewport to use `+`/`-` to zoom and `0` to fit.
+  - Left/Right still switches slides in the focused deck.
+- Fullscreen uses the browser API or an in-page fallback.
+  - Exit restores focus; Escape closes the fallback.
+  - Changing the diagram source or removing its block closes fullscreen and releases background locks.
 
 ## Files and lifecycle
 
@@ -100,5 +119,5 @@ Automated checks do not establish visual acceptance or reliable automatic skill 
 
 ## Scope and license
 
-This release does not provide cloud sharing, accounts, collaboration, browser editing, pan/zoom, autoplay, export, partial updates, a standalone persistent server, or arbitrary Mermaid types and external assets.
+This release does not provide cloud sharing, accounts, collaboration, browser editing, autoplay, export, partial updates, a standalone persistent server, or arbitrary Mermaid types and external assets.
 See [LICENSE](LICENSE) for the GNU Affero General Public License, version 3.

@@ -86,6 +86,10 @@ export async function rendered(deck: Locator) {
   await expect(deck.locator(".diagram-svg > svg")).toBeVisible()
 }
 
+export async function selectSlide(deck: Locator, id: string) {
+  await deck.locator(`.slide-dot[data-slide-id="${id}"]`).click()
+}
+
 export function getDeck(document: CanvasDocument, id: string) {
   const block = document.blocks.find((block) => block.id === id)
   if (block?.type !== "diagram-deck") throw new Error(`Missing fixture deck ${id}`)

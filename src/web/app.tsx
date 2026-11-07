@@ -105,7 +105,6 @@ function currentSlide(deck: DiagramDeck, selection: Selection) {
 
 function Deck({ deck }: { deck: DiagramDeck }) {
   const titleId = useId()
-  const selectId = useId()
   const viewportId = useId()
   const [selection, setSelection] = useState<Selection>(() => ({
     id: deck.slides[0].id,
@@ -136,39 +135,28 @@ function Deck({ deck }: { deck: DiagramDeck }) {
       // biome-ignore lint/a11y/noNoninteractiveTabindex: Focus enables the required deck-local arrow controls.
       tabIndex={0}
       onKeyDown={(event) => {
-        if (
-          event.target instanceof HTMLSelectElement ||
-          event.altKey ||
-          event.ctrlKey ||
-          event.metaKey
-        )
-          return
+        if (event.altKey || event.ctrlKey || event.metaKey) return
         if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
           event.preventDefault()
           move(event.key === "ArrowLeft" ? -1 : 1)
         }
       }}
     >
-      <h2 id={titleId}>{deck.title}</h2>
-      {multiple && (
-        <nav className="deck-navigation" aria-label={`${deck.title} slides`}>
-          <label htmlFor={selectId}>Slide</label>
-          <select id={selectId} value={active.id} onChange={(event) => select(event.target.value)}>
-            {deck.slides.map((slide) => (
-              <option key={slide.id} value={slide.id}>
-                {slide.title}
-              </option>
-            ))}
-          </select>
-          <span className="slide-count" aria-live="polite">
-            {index + 1} / {deck.slides.length}
-          </span>
-        </nav>
-      )}
+      <header className="deck-heading">
+        <div>
+          <p className="deck-context">
+            {deck.title === active.title ? "Diagram Deck" : deck.title}
+          </p>
+          <h2 id={titleId}>{active.title}</h2>
+        </div>
+        <span className="deck-kind">Mermaid</span>
+      </header>
       <div className="slide-content">
-        <h3>{active.title}</h3>
-        <div className={`deck-carousel${multiple ? " deck-carousel-multiple" : ""}`}>
-          {multiple && (
+        <div className="deck-viewport" id={viewportId}>
+          <Diagram source={active.mermaid} blockId={deck.id} slideId={active.id} />
+        </div>
+        {multiple && (
+          <fieldset className="slide-pagination" aria-label={`${deck.title} slide positions`}>
             <button
               type="button"
               className="deck-arrow deck-arrow-previous"
@@ -180,11 +168,23 @@ function Deck({ deck }: { deck: DiagramDeck }) {
             >
               <span className="deck-arrow-icon" aria-hidden="true" />
             </button>
-          )}
-          <div className="deck-viewport" id={viewportId}>
-            <Diagram source={active.mermaid} blockId={deck.id} slideId={active.id} />
-          </div>
-          {multiple && (
+            <div className="slide-dots">
+              {deck.slides.map((slide, position) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  className="slide-dot"
+                  data-slide-id={slide.id}
+                  aria-label={`Slide ${position + 1}: ${slide.title}`}
+                  aria-controls={viewportId}
+                  aria-current={slide.id === active.id ? "step" : undefined}
+                  title={`Slide ${position + 1}: ${slide.title}`}
+                  onClick={() => select(slide.id)}
+                >
+                  <span aria-hidden="true" />
+                </button>
+              ))}
+            </div>
             <button
               type="button"
               className="deck-arrow deck-arrow-next"
@@ -196,30 +196,17 @@ function Deck({ deck }: { deck: DiagramDeck }) {
             >
               <span className="deck-arrow-icon" aria-hidden="true" />
             </button>
-          )}
-        </div>
-        {multiple && (
-          <fieldset className="slide-pagination" aria-label={`${deck.title} slide positions`}>
-            {deck.slides.map((slide, position) => (
-              <button
-                key={slide.id}
-                type="button"
-                className="slide-dot"
-                aria-label={`Slide ${position + 1}: ${slide.title}`}
-                aria-controls={viewportId}
-                aria-current={slide.id === active.id ? "step" : undefined}
-                title={`Slide ${position + 1}: ${slide.title}`}
-                onClick={() => select(slide.id)}
-              >
-                <span aria-hidden="true" />
-              </button>
-            ))}
+            <span className="slide-count" aria-live="polite">
+              {index + 1} / {deck.slides.length}
+            </span>
           </fieldset>
         )}
-        <Markdown
-          markdown={active.explanationMarkdown}
-          context={`Block ${deck.id}, slide ${active.id}`}
-        />
+        <div className="slide-explanation">
+          <Markdown
+            markdown={active.explanationMarkdown}
+            context={`Block ${deck.id}, slide ${active.id}`}
+          />
+        </div>
       </div>
     </section>
   )

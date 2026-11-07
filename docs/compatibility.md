@@ -28,10 +28,12 @@ Source inspection and automated tests do not establish human visual acceptance o
 
 Local verification produced these results:
 
-- `npm run ci` passed on Node.js `22.19.0` and `26.8.2`, including formatting/lint checks, 93 of 93 Vitest tests across five files, and production builds.
+- `npm run ci` passed on Node.js `22.19.0` and `26.8.2`, including formatting/lint checks, 115 of 115 Vitest tests across six files, and production builds.
 - `npx vitest run tests/skill.test.ts` passed 15 of 15 tests independently on Node.js `26.8.2`.
-- `npm run test:browser` passed 16 of 16 Chromium tests on both Node.js `22.19.0` and `26.8.2`.
-- Carousel checks cover 44-pixel side arrows, clickable position dots, boundary states, independent decks, and hidden single-slide controls at desktop and narrow widths.
+- `npm run test:browser` passed 26 of 26 Chromium tests on both Node.js `22.19.0` and `26.8.2`.
+- Compact-frame checks cover a single current-slide title, a bounded viewport, 44-pixel toolbar controls, bottom arrows, labelled position dots, independent selection, and hidden single-slide navigation.
+- Camera checks cover initial Fit without upscaling, native-size Reset, zoom bounds, modified-wheel zoom, ordinary document scrolling, pointer capture, resize modes, source view, and listener/observer cleanup.
+- Fullscreen checks exercise the native browser API and rejected/unavailable-API fallback, focus restoration, inert/scroll restoration, source changes, unmount, and late native-request completion.
 - `npm run test:package` passed actual host/resource discovery and isolated installation checks on Node.js `22.19.0` and `26.8.2` in `scripts/package-smoke.ts`.
   - `DefaultResourceLoader` discovers the bundled skill.
   - `session.followUp('/skill:canvas-explain-diagrams ...')` expands the skill without a model call.
@@ -64,12 +66,14 @@ Source inspection found this path in the installed Mermaid 12.3.0 distribution:
 
 `src/web/diagram.tsx` uses DOMPurify's SVG profile, removes active/external elements and link attributes, and retains only local fragment CSS URLs.
 `tests/browser/viewer.spec.ts` observes calls to the actual bundled Rough.js renderer while preserving its output, and checks real paths, styles, markers, fixed-seed redraws, and isolated SVG IDs.
-The browser suite also checks native-size label readability at a 390-pixel viewport and rejects quoted or escaped image metadata before Mermaid can request resources.
+The browser suite also checks native-size label readability after Reset at a 390-pixel viewport and rejects quoted or escaped image metadata before Mermaid can request resources.
 Server and browser use the same source policy in `src/mermaid-policy.ts`.
 Other Mermaid diagram types remain outside the allowlist even if the dependency can parse them.
 
-A representative 66-node, 65-edge flowchart completed in 425 ms in one local Node.js 22.19.0/Chromium run.
+A representative 66-node, 65-edge flowchart completed in 444 ms in one local Node.js 22.19.0/Chromium run.
 This is a single observation, not a performance guarantee or CPU-isolation claim.
+Initial Fit can reduce large-graph labels below readable size; Reset, zoom, and panning provide access to native-size content.
+The frame does not rewrite Mermaid orientation or node content.
 The browser tests save `rough-path-evidence.json`, `large-flowchart-timing.json`, and fixture screenshots under ignored `test-results/`; CI retains these as artifacts.
 Vite reports large Mermaid chunks over 500 kB; lazy renderer chunks remain local, and bundle size is not a passed performance target.
 
