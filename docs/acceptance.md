@@ -38,7 +38,7 @@ Expected assertions:
 - [ ] Terms are defined before use and the conclusion answers each main question.
 - [ ] Assumptions are marked as a teaching model instead of source-verified implementation facts.
 - [ ] Creation omits `documentId` and `expectedRevision`, and the result reports the generated ID and revision.
-- [ ] Opening uses a supported TUI or RPC session and returns a loopback URL without an OS-browser launch.
+- [ ] Opening uses a supported TUI or RPC session and automatically returns a detected private IPv4 URL, or a loopback URL fallback, without an OS-browser launch or host configuration.
 - [ ] The final response separates storage success from rendering evidence.
 
 ### Process prompt
@@ -149,6 +149,30 @@ Use `sketchbook_write` to save each bundled asset, then `sketchbook_open` to obt
 
 Screenshots and automated render checks support this review but do not replace the user's visual acceptance.
 Remote SSH, container forwarding, and WSLg/Windows browser connectivity need separate tests on the target environment.
+
+## LAN device handoff
+
+The user operates the physical second device and controls any firewall or router permissions.
+Build the updated extension, reload a persistent Pi TUI or RPC process, and call `sketchbook_open` for a fresh full URL.
+No manual host argument is required.
+Both devices must be on a trusted LAN.
+The listener binds to all IPv4 interfaces, while the URL selects the first detected non-internal private IPv4 address; a loopback URL fallback does not make the listener loopback-only.
+Do not send the capability URL or token to public logs or issue trackers.
+
+Open the full URL on the second device.
+The expected result is that document content, diagrams, slide navigation, and updated revisions load.
+Then stop the Pi session and confirm that the second device reports disconnection and cannot fetch new document data.
+Content already loaded in the browser can remain visible; stopping the server does not erase browser memory.
+
+Physical-device routing, firewall permissions, Wi-Fi client isolation, VPN/virtual-interface selection, touch behavior, and human acceptance remain unverified by a same-host private-address check.
+If connection fails, confirm the selected address and local network policy; do not disable firewall protections or expose the port to the Internet as a workaround.
+Stop Pi to close the wildcard listener, or reload and open a fresh URL after a network or DHCP change.
+No document migration is required.
+
+Agent checks can establish exact binding, local browser rendering, token/origin enforcement, and listener shutdown.
+They cannot establish second-device compatibility or release readiness.
+Do not claim support on a specific physical device until its owner completes this check.
+Existing model-cost and release-authorization restrictions remain in force.
 
 ## Package-owner handoff
 

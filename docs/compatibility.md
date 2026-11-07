@@ -21,6 +21,7 @@ Source inspection and automated tests do not establish human visual acceptance o
 | Skill resources                 | Automated          | Frontmatter, relative local links, strict schema fixtures, allowlist, and connected walkthrough checks pass `tests/skill.test.ts`.                  |
 | Built local and tarball loading | Automated          | `npm run test:package` loads actual local and extracted npm-tarball resources and viewer assets without external browser requests.                  |
 | Human visual acceptance         | Unverified         | Text size, hand-drawn style, responsive layout, and explanation clarity require user review.                                                        |
+| Trusted LAN IPv4                | Source + Automated | Tests and same-host private-interface Chromium smoke pass on macOS; physical second-device access remains unverified.                               |
 | Remote access                   | Unverified         | SSH forwarding, containers, and WSLg/Windows browser routing need environment-specific checks.                                                      |
 | Real-model tool use             | Unverified         | No API calls or model-cost tests were performed; automatic skill selection is not established.                                                      |
 
@@ -101,6 +102,33 @@ Node.js 22.19.0 was not rerun locally for this update; the existing CI matrix pr
 On macOS, the existing exact-path tests require a physical temporary-directory path.
 Run `export TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"` before the checks when TMPDIR contains the `/var` alias for `/private/var`.
 The alias otherwise causes baseline path-equality failures; this update does not change storage path behavior.
+
+### Automatic LAN viewer
+
+Verification on macOS with Node.js `26.11.1` on 2026-11-08 produced these results:
+
+- `npm run ci` passed formatting, TypeScript checks, 176 of 176 unit tests across seven files, and production builds.
+- `npm run test:browser` passed all 37 Chromium tests with the automatic viewer URLs.
+- `npm pack --dry-run` and `npm run test:package` passed local and extracted-tarball discovery, zero registered extension flags, automatic address selection, viewer assets, and shutdown.
+- The 73 focused server/tool tests cover wildcard binding, all three private IPv4 ranges, excluded public/internal/IPv6 addresses, loopback URL fallback, duplicate interfaces, discovery failure, unchanged model inputs, token checks, and lifecycle cleanup.
+  - Interface discovery is mocked for these unit cases so CI does not require a private address. The sockets still bind to wildcard IPv4.
+  - Tests reject mismatched Origin values even when both the request Host and the other origin address are independently allowed.
+- A separate smoke check used no host argument and automatically selected the host's real private IPv4 address with Chromium `158.0.8127.18` at 1440px and 390px.
+  - `lsof` confirmed a wildcard IPv4 listener; both the detected private address and loopback served requests with their own matching Origin.
+  - Bundled assets, Markdown, math, diagrams, slide navigation, authenticated 200/304 polling, and revision updates passed without external requests or page errors.
+  - Missing/wrong/query-string tokens, wildcard/foreign Host values, mismatched Origin values, and write methods were denied.
+  - Shutdown disconnected the browser and closed the listener while saved state and the last loaded browser content remained.
+  - Ignored `test-results/auto-lan-smoke/` contains screenshots and a token-free report with built-source hashes.
+
+The viewer now binds to `0.0.0.0` by default; no host configuration remains.
+The returned URL uses the first detected non-internal private IPv4 address in operating-system interface order, or `127.0.0.1` if none is detected.
+A loopback URL fallback does not restrict the wildcard listener to loopback.
+Host validation is not client-IP filtering, and HTTP is unencrypted; use only trusted networks and operating-system firewall policy.
+Physical second-device routing, firewall permissions, Wi-Fi isolation, VPN/virtual-interface selection, and human acceptance remain unverified.
+The currently running Pi process needs `/reload` and a fresh `sketchbook_open` call to use the new built extension.
+See the [LAN device handoff](acceptance.md#lan-device-handoff).
+No firewall settings, router settings, publication, tags, or releases were changed.
+The existing Vite chunk-size warning remains; this change does not alter the renderer bundle.
 
 ## Fixture coverage
 

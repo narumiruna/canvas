@@ -177,9 +177,9 @@ export function registerSketchbookTools(pi: ExtensionAPI): () => Promise<void> {
   pi.registerTool({
     name: "sketchbook_open",
     label: "Sketchbook Open",
-    promptSnippet: "Get a local read-only Pi Sketchbook viewer URL for the current session",
+    promptSnippet: "Get a read-only Pi Sketchbook viewer URL for the current session",
     description:
-      "Return a local read-only viewer URL for a saved document; does not launch a browser or verify rendering. Requires a persistent tui or rpc session. Reload, new, resume, fork, or shutdown invalidates the URL; open again in the new session.",
+      "Return a read-only viewer URL for a saved document; does not launch a browser or verify rendering. Listens on all IPv4 interfaces and automatically uses a private LAN address, or loopback if none is detected. Use only on trusted networks and keep the full capability URL private. Requires a persistent tui or rpc session. Reload, new, resume, fork, or shutdown invalidates the URL; open again in the new session.",
     parameters: IdInputSchema,
     outputSchema: OpenOutputSchema,
     async execute(_id, input, signal, _onUpdate, ctx) {
