@@ -136,7 +136,7 @@ The existing Vite chunk-size warning remains; this change does not alter the ren
 Verification on macOS with Node.js `26.11.1` and Pi `1.5.0` on 2026-11-08 produced these results:
 
 - `npm run ci` passed formatting, TypeScript, all 193 unit tests across eight files, and production builds.
-- `npm run test:browser -- --output=test-results/browser` passed all 60 Chromium tests.
+- `npm run test:browser -- --output=test-results/browser` passed all 61 Chromium tests.
   - Complete-article coverage includes 16 slides at each width, for 32 initial-fit slide/viewport checks.
   - Disclosure keyboard/tab order, native/fallback fullscreen, live source replacement and outside focus, 20-slide navigation, coarse-pointer help, touch scrolling, and enlarged-root-text wrapping passed.
 - `npm pack --dry-run` and `npm run test:package` passed local and extracted-tarball loading, actual tool execution, bundled assets, math rendering, and shutdown.
@@ -178,7 +178,10 @@ Controlled before/after checks use identical `readingFixture()` content against 
 | 390x844, fine and coarse pointer | 611.52px                      | 577.02px | 15.98px / 15.98px             |
 
 Offsets above are macOS measurements relative to the card top.
-CI preserves the one-body-line improvement and unchanged-label requirements, but calibrates legacy title wrapping and unchanged compact SVG height with the current browser's system font.
+CI preserves the one-body-line improvement and unchanged-label requirements with frozen historical heading styles and the historical SVG inset/clamp formula.
+Only system-font glyph measurements and intrinsic SVG dimensions are browser-specific; an isolated historical heading fixture prevents current header or descendant styles from changing the reference.
+The frame reference uses the historical geometry formula, not the live frame height.
+A pinned fixture SHA-256 requires identical text/source, and negative checks confirm that 16px of added header padding, title padding/borders, or frame whitespace fails the comparison.
 The historical toolbar/hint/pagination spacing remains fixed; raw and same-font offsets are both recorded.
 This avoids comparing Linux font geometry against an absolute macOS pixel coordinate.
 SVG label checks also tolerate inter-tspan whitespace differences without changing label text or rendering policy.

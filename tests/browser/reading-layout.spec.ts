@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto"
 import { readFile, writeFile } from "node:fs/promises"
-import { expect, test } from "@playwright/test"
+import { expect, type Locator, test } from "@playwright/test"
 import { readingFixture } from "../fixtures/reading-layout.js"
 import { captureArticle, getDeck, readingMetrics, rendered, save, selectSlide } from "./helpers.js"
 
@@ -39,6 +40,7 @@ const baseline = JSON.parse(
   await readFile(new URL("../fixtures/reading-layout-baseline.json", import.meta.url), "utf8"),
 ) as {
   sourceRevision: string
+  fixtureSha256: string
   measurements: Array<{
     width: number
     height: number
@@ -51,6 +53,102 @@ const baseline = JSON.parse(
     minFontPx: number
   }>
 }
+
+// Historical layout constants from 348c400, independent of current Viewer CSS.
+// Only system-font glyph metrics and the unchanged source SVG are browser-specific.
+async function historicalCompactBaseline(
+  deck: Locator,
+  before: (typeof baseline.measurements)[number],
+) {
+  const reference = await deck.evaluate(
+    (element, previous) => {
+      const current = element.querySelector<HTMLElement>(".deck-heading")
+      const svg = element.querySelector<SVGSVGElement>(".diagram-svg > svg")
+      if (!current || !svg) throw new Error("Missing baseline inputs")
+      // A shadow root prevents current heading/descendant rules from changing
+      // the reference. Construct historical markup rather than cloning styles.
+      const host = document.createElement("div")
+      host.setAttribute("aria-hidden", "true")
+      host.style.cssText = `all: initial; display: block; position: absolute; visibility: hidden; width: ${previous.width}px;`
+      const shadow = host.attachShadow({ mode: "closed" })
+      const style = document.createElement("style")
+      style.textContent = `
+        * { box-sizing: border-box; margin: 0; padding: 0; border: 0; }
+        header { display: flex; align-items: center; justify-content: space-between;
+          gap: 16px; padding: ${previous.width <= 600 ? "13.6px" : "16px 20px"};
+          border-bottom: 1px solid transparent; font: 16px/25.6px system-ui, sans-serif; }
+        div { min-width: 0; }
+        h2, h3 { font-weight: 700; overflow-wrap: break-word; }
+        h2 { font-size: 21.6px; line-height: 27px; }
+        h3 { font-size: 17.6px; line-height: 22px; margin-top: 5.6px; }
+        span { flex-shrink: 0; padding: 3.2px 9.6px; border: 1px solid transparent;
+          font-size: 11.2px; line-height: 17.92px; }
+      `
+      const legacy = document.createElement("header")
+      const titles = document.createElement("div")
+      for (const tag of ["h2", "h3"]) {
+        const title = document.createElement(tag)
+        title.textContent = current.querySelector(tag)?.textContent ?? ""
+        titles.append(title)
+      }
+      const badge = document.createElement("span")
+      badge.textContent = "Mermaid"
+      legacy.append(titles, badge)
+      shadow.append(style, legacy)
+      element.append(host)
+      let headingHeight: number
+      try {
+        headingHeight = legacy.getBoundingClientRect().height
+      } finally {
+        host.remove()
+      }
+      const natural = svg.viewBox.baseVal
+      const inlineScale = Math.min(1, (previous.width - 32) / natural.width)
+      const limit = Math.max(240, Math.min(previous.height * 0.7, 576))
+      const frameHeight = Math.max(96, Math.min(natural.height * inlineScale + 32, limit))
+      return { headingHeight, frameHeight }
+    },
+    { width: before.frame.width, height: before.height },
+  )
+  return {
+    ...reference,
+    firstParagraphY:
+      before.firstParagraph.y +
+      (reference.headingHeight - before.heading.height) +
+      (reference.frameHeight - before.frame.height),
+  }
+}
+
+test("historical comparison detects added heading padding and frame whitespace", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto((await save(request, readingFixture())).url)
+  const deck = page.locator('[data-block-id="reading"]')
+  await rendered(deck)
+  const before = baseline.measurements.find((item) => item.width === 390 && !item.touch)
+  if (!before) throw new Error("Missing mobile reference")
+  const reference = await historicalCompactBaseline(deck, before)
+  const threshold = reference.firstParagraphY - before.lineHeight + 0.5
+  expect((await readingMetrics(deck)).firstParagraph?.y).toBeLessThanOrEqual(threshold)
+  for (const css of [
+    ".deck-heading { padding-top: calc(0.85rem + 8px); padding-bottom: calc(0.85rem + 8px); }",
+    ".deck-heading h2 { padding-block: 8px; }",
+    ".deck-heading h3 { border-block: 8px solid transparent; }",
+    `.diagram-viewport { height: ${(await readingMetrics(deck)).frame.height + 16}px !important; }`,
+  ]) {
+    const override = await page.addStyleTag({ content: css })
+    const unchanged = await historicalCompactBaseline(deck, before)
+    expect(unchanged.firstParagraphY).toBeCloseTo(reference.firstParagraphY, 2)
+    await expect
+      .poll(async () => (await readingMetrics(deck)).firstParagraph?.y)
+      .toBeGreaterThan(threshold)
+    await override.evaluate((node) => {
+      node.parentNode?.removeChild(node)
+    })
+  }
+})
 
 for (const viewport of [
   { width: 1440, height: 1000, touch: false },
@@ -70,6 +168,9 @@ for (const viewport of [
       request,
     }, testInfo) => {
       const content = readingFixture()
+      expect(createHash("sha256").update(JSON.stringify(content)).digest("hex")).toBe(
+        baseline.fixtureSha256,
+      )
       const authored = getDeck(content, "reading")
       await page.goto((await save(request, content)).url)
       const deck = page.locator('[data-block-id="reading"]')
@@ -84,26 +185,7 @@ for (const viewport of [
       )
       if (!before) throw new Error("Missing controlled reading baseline")
       expect(baseline.sourceRevision).toBe("348c400")
-      // Calibrate the old title wrapping with this browser's actual system font.
-      // The raw baseline keeps its historical toolbar/hint/pagination spacing.
-      const legacyHeadingHeight = await deck.evaluate((element) => {
-        const current = element.querySelector<HTMLElement>(".deck-heading")
-        if (!current) throw new Error("Missing heading")
-        const legacy = current.cloneNode(true) as HTMLElement
-        legacy.setAttribute("aria-hidden", "true")
-        legacy.style.position = "absolute"
-        legacy.style.visibility = "hidden"
-        legacy.style.width = `${current.getBoundingClientRect().width}px`
-        const badge = legacy.querySelector<HTMLElement>(".deck-kind")
-        if (!badge) throw new Error("Missing legacy badge")
-        badge.style.display = "block"
-        element.append(legacy)
-        try {
-          return legacy.getBoundingClientRect().height
-        } finally {
-          legacy.remove()
-        }
-      })
+      const reference = await historicalCompactBaseline(deck, before)
       const evidence = []
       for (const slide of authored.slides) {
         await selectSlide(deck, slide.id)
@@ -173,10 +255,7 @@ for (const viewport of [
             // identical on macOS and Linux. Compare the same content/font, not
             // Linux output against an absolute macOS pixel coordinate.
             expect(frame.width).toBe(before.frame.width)
-            sameFontBaselineOffsetPx =
-              before.firstParagraph.y +
-              (legacyHeadingHeight - before.heading.height) +
-              (frame.height - before.frame.height)
+            sameFontBaselineOffsetPx = reference.firstParagraphY
             expect(firstParagraph.y).toBeLessThanOrEqual(
               sameFontBaselineOffsetPx - before.lineHeight + 0.5,
             )
@@ -211,9 +290,9 @@ for (const viewport of [
             ...viewport,
             sourceRevision: baseline.sourceRevision,
             baseline: before,
-            legacyHeadingHeight,
+            reference,
             baselineCalibration:
-              "Historical chrome spacing plus same-browser legacy title wrapping and unchanged compact SVG geometry",
+              "Frozen historical heading styles and frame inset/clamp formula with same-browser system font and intrinsic SVG geometry",
             evidence,
           },
           null,

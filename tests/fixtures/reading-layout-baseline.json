@@ -1,5 +1,6 @@
 {
   "sourceRevision": "348c400",
+  "fixtureSha256": "355f9284136409b5afa6780044e8101c56e0761091a8579e843d7702e5d827cd",
   "description": "Unchanged readingFixture compact slide before the reading-layout change. Offsets are relative to the card top; wide and tall slides are stress cases.",
   "measurements": [
     {
