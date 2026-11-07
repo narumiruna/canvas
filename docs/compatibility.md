@@ -177,7 +177,11 @@ Controlled before/after checks use identical `readingFixture()` content against 
 | 1440x1000 and 1280x960           | 540.38px                      | 109.56px | 15.98px / 15.98px             |
 | 390x844, fine and coarse pointer | 611.52px                      | 577.02px | 15.98px / 15.98px             |
 
-Offsets are relative to the card top.
+Offsets above are macOS measurements relative to the card top.
+CI preserves the one-body-line improvement and unchanged-label requirements, but calibrates legacy title wrapping and unchanged compact SVG height with the current browser's system font.
+The historical toolbar/hint/pagination spacing remains fixed; raw and same-font offsets are both recorded.
+This avoids comparing Linux font geometry against an absolute macOS pixel coordinate.
+SVG label checks also tolerate inter-tspan whitespace differences without changing label text or rendering policy.
 Final review caught the initial fixed-pixel layout overflowing at 1024px with 20px root text; font-scaled wrapping and four width/root-font regression cases resolve it.
 The mobile improvement is 34.5px, more than one 25.6px body-text line, without reducing graph labels or removing authored content.
 Capture commands and raw geometry are reproducible with `scripts/capture-reading-layout.ts` and the committed baseline metrics.

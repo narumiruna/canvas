@@ -154,7 +154,10 @@ test("a live source replacement restores hidden-control focus but does not steal
   await control(deck, "Reset zoom").focus()
   getDeck(content, "first").slides[0].mermaid = "flowchart LR\n New[Updated input] --> Saved"
   const updated = await save(request, content, fixture.stored)
-  await expect(deck.locator(".diagram-svg > svg")).toContainText("Updated input")
+  // SVG line wrapping can split words into tspans without separator whitespace.
+  await expect(
+    deck.locator(".diagram-svg > svg .rough-node").filter({ hasText: /Updated\s*input/ }),
+  ).toHaveCount(1)
   await rendered(deck)
   await expect(control(deck, "More controls")).toHaveAttribute("aria-expanded", "false")
   await expect(deck.locator(".diagram-secondary-controls")).toBeHidden()
@@ -166,7 +169,9 @@ test("a live source replacement restores hidden-control focus but does not steal
   await other.focus()
   getDeck(content, "first").slides[0].mermaid = "flowchart LR\n New[Second update] --> Saved"
   await save(request, content, updated.stored)
-  await expect(deck.locator(".diagram-svg > svg")).toContainText("Second update")
+  await expect(
+    deck.locator(".diagram-svg > svg .rough-node").filter({ hasText: /Second\s*update/ }),
+  ).toHaveCount(1)
   await expect(control(deck, "More controls")).toHaveAttribute("aria-expanded", "false")
   await expect(other).toBeFocused()
 })
@@ -471,7 +476,9 @@ for (const change of ["source replacement", "unmount"] as const) {
     await expect(page.getByRole("dialog")).toHaveCount(0)
     if (change === "unmount") await expect(deck).toHaveCount(0)
     else {
-      await expect(deck.locator(".diagram-svg > svg")).toContainText("Native cleanup")
+      await expect(
+        deck.locator(".diagram-svg > svg .rough-node").filter({ hasText: /Native\s*cleanup/ }),
+      ).toHaveCount(1)
       await expect(control(deck, "More controls")).toHaveAttribute("aria-expanded", "false")
       await expect(deck.locator(".diagram-secondary-controls")).toBeHidden()
       await expect(control(deck, "Fullscreen")).toBeFocused()

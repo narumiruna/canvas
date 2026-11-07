@@ -45,6 +45,8 @@ const baseline = JSON.parse(
     touch: boolean
     slide: string
     firstParagraph: { y: number }
+    heading: { height: number }
+    frame: { height: number; width: number }
     lineHeight: number
     minFontPx: number
   }>
@@ -82,6 +84,26 @@ for (const viewport of [
       )
       if (!before) throw new Error("Missing controlled reading baseline")
       expect(baseline.sourceRevision).toBe("348c400")
+      // Calibrate the old title wrapping with this browser's actual system font.
+      // The raw baseline keeps its historical toolbar/hint/pagination spacing.
+      const legacyHeadingHeight = await deck.evaluate((element) => {
+        const current = element.querySelector<HTMLElement>(".deck-heading")
+        if (!current) throw new Error("Missing heading")
+        const legacy = current.cloneNode(true) as HTMLElement
+        legacy.setAttribute("aria-hidden", "true")
+        legacy.style.position = "absolute"
+        legacy.style.visibility = "hidden"
+        legacy.style.width = `${current.getBoundingClientRect().width}px`
+        const badge = legacy.querySelector<HTMLElement>(".deck-kind")
+        if (!badge) throw new Error("Missing legacy badge")
+        badge.style.display = "block"
+        element.append(legacy)
+        try {
+          return legacy.getBoundingClientRect().height
+        } finally {
+          legacy.remove()
+        }
+      })
       const evidence = []
       for (const slide of authored.slides) {
         await selectSlide(deck, slide.id)
@@ -141,13 +163,22 @@ for (const viewport of [
           await expect(paragraph).toBeVisible()
         const code = /```typescript\n([\s\S]*?)\n```/.exec(slide.explanationMarkdown)?.[1]
         if (code) await expect(deck.locator(".slide-explanation pre code")).toHaveText(`${code}\n`)
+        let sameFontBaselineOffsetPx: number | null = null
         if (slide.id === "compact") {
           expect(metrics.minFontPx).toBeGreaterThanOrEqual(12)
           // The same authored content must improve composition, not shrink labels.
           expect(metrics.minFontPx).toBeGreaterThanOrEqual(before.minFontPx - 0.05)
           if (viewport.width === 390) {
+            // The camera/source is unchanged, but system-font SVG geometry is not
+            // identical on macOS and Linux. Compare the same content/font, not
+            // Linux output against an absolute macOS pixel coordinate.
+            expect(frame.width).toBe(before.frame.width)
+            sameFontBaselineOffsetPx =
+              before.firstParagraph.y +
+              (legacyHeadingHeight - before.heading.height) +
+              (frame.height - before.frame.height)
             expect(firstParagraph.y).toBeLessThanOrEqual(
-              before.firstParagraph.y - before.lineHeight + 0.5,
+              sameFontBaselineOffsetPx - before.lineHeight + 0.5,
             )
           }
         }
@@ -160,6 +191,11 @@ for (const viewport of [
           ...(slide.id === "compact"
             ? {
                 explanationStartChangePx: firstParagraph.y - before.firstParagraph.y,
+                sameFontBaselineOffsetPx,
+                sameFontExplanationChangePx:
+                  sameFontBaselineOffsetPx === null
+                    ? null
+                    : firstParagraph.y - sameFontBaselineOffsetPx,
                 fittedLabelChangePx: metrics.minFontPx - before.minFontPx,
               }
             : {}),
@@ -175,6 +211,9 @@ for (const viewport of [
             ...viewport,
             sourceRevision: baseline.sourceRevision,
             baseline: before,
+            legacyHeadingHeight,
+            baselineCalibration:
+              "Historical chrome spacing plus same-browser legacy title wrapping and unchanged compact SVG geometry",
             evidence,
           },
           null,
