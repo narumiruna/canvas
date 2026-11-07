@@ -104,8 +104,17 @@ After an interrupted response, read to check whether the write already committed
 
 ### Open
 
-`sketchbook_open({ documentId })` returns an ephemeral loopback viewer URL in TUI or RPC mode.
-It does not launch an operating-system browser.
+`sketchbook_open({ documentId })` returns an ephemeral viewer URL in TUI or RPC mode.
+It listens on `0.0.0.0` and automatically returns the first detected non-internal private IPv4 address in operating-system interface order, or `127.0.0.1` if none is detected.
+No host flag or manual IP entry is required.
+The wildcard listener opens every IPv4 interface, even when the URL falls back to loopback; use only trusted networks and firewall policy.
+Accepted Host values are detected private IPv4 addresses in `10/8`, `172.16/12`, or `192.168/16`, plus `127.0.0.1`, on the actual viewer port.
+An Origin header must match that request's allowed Host; public, wildcard, hostname, unassigned, and mismatched-origin requests are rejected.
+A tool argument does not select the host.
+Use the returned URL and keep its capability token private.
+VPN or virtual interfaces can affect automatic selection; network changes require a reload and a fresh URL.
+LAN HTTP is unencrypted, and the token permits document reads within that viewer's workspace, not only the linked document.
+Opening does not launch an operating-system browser.
 Print and JSON modes can write and read, but cannot keep the viewer server alive.
 If opening is unavailable, return the saved ID and revision and explain this limitation.
 
@@ -117,4 +126,4 @@ Do not write the same document from multiple Pi processes.
 Tree navigation, resume, and fork do not undo disk writes; create a new ID for a separate document branch.
 Shutdown closes the viewer server, but preserves saved documents.
 After reload, new, resume, or fork, open again for a current URL.
-Remote host forwarding and a user's browser access require separate verification.
+Physical second-device LAN access, remote host forwarding, and a user's browser access require separate verification.

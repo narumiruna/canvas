@@ -2,12 +2,17 @@ import { once } from "node:events"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { type IncomingHttpHeaders, request, Server } from "node:http"
 import { connect } from "node:net"
-import { tmpdir } from "node:os"
+import { type NetworkInterfaceInfo, networkInterfaces, tmpdir } from "node:os"
 import { join } from "node:path"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { SketchbookDocument, StoredDocument } from "../src/document.js"
 import { ViewerServer } from "../src/server.js"
 import { DocumentStore } from "../src/store.js"
+
+vi.mock("node:os", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:os")>()),
+  networkInterfaces: vi.fn(() => ({})),
+}))
 
 const document: SketchbookDocument = {
   schemaVersion: 1,
@@ -56,6 +61,17 @@ function get(
   })
 }
 
+function interfaceAddress(address: string, internal = false): NetworkInterfaceInfo {
+  return {
+    address,
+    family: "IPv4",
+    internal,
+    netmask: "255.255.255.0",
+    mac: "00:00:00:00:00:00",
+    cidr: `${address}/24`,
+  }
+}
+
 describe("ViewerServer", () => {
   let cwd: string
   let assets: string
@@ -65,6 +81,7 @@ describe("ViewerServer", () => {
   const servers: ViewerServer[] = []
 
   beforeEach(async () => {
+    vi.mocked(networkInterfaces).mockReset().mockReturnValue({})
     cwd = await mkdtemp(join(tmpdir(), "sketchbook-server-"))
     assets = join(cwd, "viewer")
     await mkdir(join(assets, "assets"), { recursive: true })
@@ -110,7 +127,162 @@ describe("ViewerServer", () => {
     expect(url.search).toBe(`?documentId=${stored.documentId}`)
     expect(url.hash).toMatch(/^#token=[A-Za-z0-9_-]{43}$/)
     expect(listen.mock.calls[0]?.[0]).toBe(0)
-    expect(listen.mock.calls[0]?.[1]).toBe("127.0.0.1")
+    expect(listen.mock.calls[0]?.[1]).toBe("0.0.0.0")
+    expect(networkInterfaces).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["10.0.0.5", "172.16.0.5", "172.31.255.254", "192.168.1.5"])(
+    "binds to wildcard IPv4 and advertises detected private address %s",
+    async (host) => {
+      vi.mocked(networkInterfaces).mockReturnValue({ en0: [interfaceAddress(host)] })
+      const listen = vi.spyOn(Server.prototype, "listen")
+      expect(listen).not.toHaveBeenCalled()
+      const url = new URL(await viewer.open(stored.documentId))
+      expect(url.hostname).toBe(host)
+      expect(url.hash).toMatch(/^#token=[A-Za-z0-9_-]{43}$/)
+      expect(listen).toHaveBeenCalledTimes(1)
+      expect(listen.mock.calls[0]?.slice(0, 2)).toEqual([0, "0.0.0.0"])
+      const connection = new URL(url)
+      connection.hostname = "127.0.0.1"
+      expect((await get(connection, "/", { Host: url.host, Origin: url.origin })).status).toBe(200)
+    },
+  )
+
+  it.each([
+    "",
+    "0.0.0.0",
+    "::",
+    "::1",
+    "[::1]",
+    "::ffff:192.168.1.5",
+    "localhost",
+    "lan.example",
+    "8.8.8.8",
+    "100.64.0.1",
+    "169.254.1.5",
+    "127.0.0.2",
+    "172.15.255.255",
+    "172.32.0.1",
+    "192.169.0.1",
+    "224.0.0.1",
+    "255.255.255.255",
+    "10.1",
+    "10.01.1.5",
+    "10.0.0.999",
+    "192.168.1.5:8080",
+    "http://192.168.1.5",
+    " 192.168.1.5",
+  ])("does not advertise or trust unsupported interface address %j", async (host) => {
+    vi.mocked(networkInterfaces).mockReturnValue({ invalid: [interfaceAddress(host)] })
+    const url = new URL(await viewer.open(stored.documentId))
+    expect(url.hostname).toBe("127.0.0.1")
+    expect((await get(url, "/", { Host: `${host}:${url.port}` })).status).toBe(403)
+  })
+
+  it("selects the first non-internal private IPv4 address and keeps every allowed origin distinct", async () => {
+    vi.mocked(networkInterfaces).mockReturnValue({
+      lo0: [interfaceAddress("127.0.0.1", true), interfaceAddress("10.0.0.1", true)],
+      public: [interfaceAddress("8.8.8.8")],
+      en0: [interfaceAddress("192.168.1.5")],
+      en1: [interfaceAddress("10.0.0.6"), interfaceAddress("192.168.1.5")],
+      ipv6: [{ ...interfaceAddress("fd00::1"), family: "IPv6", scopeid: 0 }],
+      absent: undefined,
+    })
+    const url = new URL(await viewer.open(stored.documentId))
+    expect(url.hostname).toBe("192.168.1.5")
+    const connection = new URL(url)
+    connection.hostname = "127.0.0.1"
+    for (const address of ["127.0.0.1", "192.168.1.5", "10.0.0.6"]) {
+      const host = `${address}:${url.port}`
+      expect((await get(connection, "/", { Host: host, Origin: `http://${host}` })).status).toBe(
+        200,
+      )
+      const foreign = address === "192.168.1.5" ? connection.origin : url.origin
+      expect((await get(connection, "/", { Host: host, Origin: foreign })).status).toBe(403)
+    }
+    vi.mocked(networkInterfaces).mockReturnValue({ en0: [interfaceAddress("192.168.1.6")] })
+    expect(await viewer.open(stored.documentId)).toBe(url.href)
+    expect(networkInterfaces).toHaveBeenCalledTimes(1)
+    expect((await get(connection, "/", { Host: `192.168.1.6:${url.port}` })).status).toBe(403)
+  })
+
+  it("uses a loopback URL with IPv6-only interfaces and never returns the wildcard address", async () => {
+    vi.mocked(networkInterfaces).mockReturnValue({
+      en0: [{ ...interfaceAddress("fd00::1"), family: "IPv6", scopeid: 0 }],
+    })
+    const { url } = await opened()
+    expect(url.hostname).toBe("127.0.0.1")
+    expect((await get(url, "/")).status).toBe(200)
+    expect((await get(url, "/", { Host: `0.0.0.0:${url.port}` })).status).toBe(403)
+  })
+
+  it("reports interface discovery failure without leaving a listener", async () => {
+    vi.mocked(networkInterfaces).mockImplementationOnce(() => {
+      throw new Error("Interface discovery failed")
+    })
+    const listen = vi.spyOn(Server.prototype, "listen")
+    await expect(viewer.open(stored.documentId)).rejects.toThrow("Interface discovery failed")
+    expect(listen).not.toHaveBeenCalled()
+    await viewer.close()
+  })
+
+  it("keeps capability, exact Host/Origin, read-only, revision, and shutdown protections on LAN", async () => {
+    vi.mocked(networkInterfaces).mockReturnValue({ en0: [interfaceAddress("192.168.1.5")] })
+    const url = new URL(await viewer.open(stored.documentId))
+    const connection = new URL(url)
+    connection.hostname = "127.0.0.1"
+    const api = `/api/documents/${stored.documentId}`
+    const token = new URLSearchParams(url.hash.slice(1)).get("token")
+    const host = { Host: url.host }
+    const auth = { ...host, Authorization: `Bearer ${token}`, Origin: url.origin }
+    expect((await get(connection, api, host)).status).toBe(401)
+    expect((await get(connection, `${api}?token=${token}`, host)).status).toBe(401)
+    expect((await get(connection, api, { ...host, Authorization: "Bearer wrong" })).status).toBe(
+      401,
+    )
+    const first = await get(connection, api, auth)
+    expect(first.status).toBe(200)
+    expect(JSON.parse(first.text)).toEqual(stored)
+    expect(first.headers["access-control-allow-origin"]).toBeUndefined()
+    const etag = first.headers.etag
+    expect((await get(connection, api, { ...auth, "If-None-Match": etag })).status).toBe(304)
+    expect((await get(connection, api, { ...host, "If-None-Match": "*" })).status).toBe(401)
+    for (const path of [api, "/", "/assets/app.js"]) {
+      for (const headers of [
+        { Host: connection.host },
+        { Host: `192.168.1.6:${url.port}` },
+        { Host: `192.168.1.5:${Number(url.port) + 1}` },
+        { Origin: "http://192.168.1.6" },
+        { Origin: "https://evil.example" },
+        { Origin: "null" },
+      ]) {
+        const response = await get(connection, path, { ...auth, ...headers })
+        expect(response.status).toBe(403)
+        expect(response.headers["access-control-allow-origin"]).toBeUndefined()
+      }
+    }
+    for (const method of ["POST", "PUT", "PATCH", "DELETE", "OPTIONS"]) {
+      expect((await get(connection, api, auth, method)).status).toBe(405)
+    }
+    expect((await store.read(stored.documentId)).revision).toBe(1)
+    await viewer.close()
+    await expect(get(connection, "/", host)).rejects.toThrow()
+    await expect(viewer.open(stored.documentId)).rejects.toThrow(/closed/)
+  })
+
+  it("does not retry another bind after wildcard binding fails", async () => {
+    const listen = vi.spyOn(Server.prototype, "listen").mockImplementationOnce(function (
+      this: Server,
+    ) {
+      queueMicrotask(() => this.emit("error", new Error("EADDRNOTAVAIL")))
+      return this
+    })
+    await expect(viewer.open(stored.documentId)).rejects.toThrow("EADDRNOTAVAIL")
+    await expect(viewer.open(stored.documentId)).rejects.toThrow("EADDRNOTAVAIL")
+    expect(listen).toHaveBeenCalledTimes(1)
+    expect(listen.mock.calls[0]?.slice(0, 2)).toEqual([0, "0.0.0.0"])
+    await viewer.close()
+    await viewer.close()
   })
 
   it("serves authenticated document JSON and conditional revisions without a body", async () => {

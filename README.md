@@ -71,6 +71,34 @@ On conflict, read again and apply the change to the current document.
 A successful write confirms validation and storage, not browser rendering.
 The [document format](skills/sketchbook-explain-diagrams/references/document-format.md) defines fields, IDs, limits, heading roles, and tool details.
 
+### LAN access
+
+Call `sketchbook_open` and use its complete returned URL on a device on the same trusted LAN.
+No manual IP entry, host flag, or network configuration is required in Pi Sketchbook.
+After changing this checkout, run `npm run build`, use `/reload` in Pi, and reopen the document.
+
+- The viewer listens on `0.0.0.0` on a random port.
+  - This opens every IPv4 interface, not just the LAN; Host checks are not client-IP filtering.
+  - The returned URL uses the first detected non-internal private IPv4 address in operating-system interface order.
+  - Private addresses are in `10.0.0.0/8`, `172.16.0.0/12`, or `192.168.0.0/16`.
+  - If none is detected, the URL uses `127.0.0.1`; the listener still uses `0.0.0.0`.
+  - `0.0.0.0` is a bind address, not the address another device opens. IPv6 is not supported.
+- Requests must use a detected private address or `127.0.0.1` with the exact viewer port.
+  - If an Origin header is present, it must match that request's allowed Host.
+  - Wildcard, public-address, hostname, and unassigned-address Host values are rejected.
+- HTTP is unencrypted.
+  - Use only trusted networks and operating-system firewall policy; do not expose or forward the port to the Internet.
+  - Keep secrets out of documents and keep the full URL private.
+  - Its fragment token permits document reads within that viewer's workspace, not only the linked document.
+- VPNs or virtual interfaces can affect which private address is detected first.
+  - Automatic selection does not prove that a second device can reach that address.
+  - Firewall policy or Wi-Fi client isolation can also block access; Pi Sketchbook does not change either.
+  - See the [LAN device handoff](docs/acceptance.md#lan-device-handoff) for the remaining checks.
+
+Addresses are captured when the listener starts.
+If the network or DHCP address changes, reload Pi and open a fresh URL.
+Stop the Pi session to close the listener and invalidate its capability; no document migration is required.
+
 ### Article review
 
 - Start article Markdown headings at H2; do not repeat the document title.
@@ -94,7 +122,8 @@ The [document format](skills/sketchbook-explain-diagrams/references/document-for
   - Mermaid uses strict security and disables HTML labels; generated SVG is sanitized.
   - KaTeX uses `trust: false`, `maxExpand: 1000`, and `maxSize: 20`.
 - Viewer scripts, styles, fonts, and renderers are bundled; no CDN is required.
-- The read-only server binds to `127.0.0.1` on an ephemeral port.
+- The read-only server binds to `0.0.0.0` on an ephemeral port and automatically returns a private IPv4 URL, with a loopback URL fallback.
+  - LAN access retains token validation and exact per-request Host/Origin checks; it requires a trusted network.
   - Data requests require a per-server capability token carried by the viewer URL fragment.
   - Host validation, same-origin access, and CSP limit browser access.
   - Treat the full viewer URL as private and keep secrets out of documents.
@@ -130,7 +159,7 @@ TUI and RPC sessions can open it; print and JSON modes support write/read only.
 Shutdown closes the server but does not remove documents.
 After reload, new, resume, or fork, open again for a current URL.
 Tree navigation and session branching do not restore disk documents; read and create a new ID for a separate document branch.
-Remote SSH, container forwarding, and WSLg/Windows browser access remain unverified.
+Physical second-device LAN access, remote SSH, container forwarding, and WSLg/Windows browser access need environment-specific verification.
 
 ## Verify
 

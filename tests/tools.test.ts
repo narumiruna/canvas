@@ -2,7 +2,7 @@ import { once } from "node:events"
 import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
 import { Server } from "node:http"
 import { connect } from "node:net"
-import { tmpdir } from "node:os"
+import { networkInterfaces, tmpdir } from "node:os"
 import { join } from "node:path"
 import type {
   ExtensionAPI,
@@ -14,6 +14,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { SketchbookDocument, StoredDocument } from "../src/document.js"
 import extension from "../src/extension.js"
 import { DocumentStore } from "../src/store.js"
+
+vi.mock("node:os", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("node:os")>()),
+  networkInterfaces: vi.fn(() => ({})),
+}))
 
 const document: SketchbookDocument = {
   schemaVersion: 1,
@@ -110,6 +115,7 @@ describe("Pi Sketchbook tool registration and lifecycle", () => {
   const hosts: Host[] = []
 
   beforeEach(async () => {
+    vi.mocked(networkInterfaces).mockReset().mockReturnValue({})
     cwd = await mkdtemp(join(tmpdir(), "sketchbook-tools-"))
     host = fakeHost()
     hosts.push(host)
@@ -138,6 +144,7 @@ describe("Pi Sketchbook tool registration and lifecycle", () => {
       "sketchbook_read",
       "sketchbook_open",
     ])
+    expect(networkInterfaces).not.toHaveBeenCalled()
     for (const tool of fresh.tools.values()) {
       expect(tool.parameters).toHaveProperty("type", "object")
       expect(tool.outputSchema).toBeDefined()
@@ -229,6 +236,7 @@ describe("Pi Sketchbook tool registration and lifecycle", () => {
       const opened = data<Opened>(result)
       const url = new URL(opened.url)
       expect(opened.renderingVerified).toBe(false)
+      expect(url.hostname).toBe("127.0.0.1")
       expect(text(result)).toContain("Browser rendering is not verified")
       const response = await fetch(`${url.origin}/api/documents/${written.documentId}`, {
         headers: { Authorization: `Bearer ${new URLSearchParams(url.hash.slice(1)).get("token")}` },
@@ -238,6 +246,58 @@ describe("Pi Sketchbook tool registration and lifecycle", () => {
       expect((await fetch(url.origin)).status).toBe(200)
     },
   )
+
+  it("automatically discovers a LAN URL only on first open without a model-controlled host input", async () => {
+    vi.mocked(networkInterfaces).mockReturnValue({
+      en0: [
+        {
+          address: "192.168.1.5",
+          family: "IPv4",
+          internal: false,
+          netmask: "255.255.255.0",
+          mac: "00:00:00:00:00:00",
+          cidr: "192.168.1.5/24",
+        },
+      ],
+    })
+    const written = await write()
+    expect(networkInterfaces).not.toHaveBeenCalled()
+    const binding = vi.spyOn(Server.prototype, "listen")
+    const first = data<Opened>(
+      await host.call("sketchbook_open", { documentId: written.documentId }, cwd),
+    )
+    expect(first.ok).toBe(true)
+    expect(new URL(first.url).hostname).toBe("192.168.1.5")
+    expect(binding.mock.calls[0]?.slice(0, 2)).toEqual([0, "0.0.0.0"])
+    expect(networkInterfaces).toHaveBeenCalledTimes(1)
+    const schema = host.tools.get("sketchbook_open")?.parameters
+    if (!schema) throw new Error("Missing open input schema")
+    expect(Check(schema, { documentId: written.documentId, host: "192.168.1.5" })).toBe(false)
+    expect(host.tools.get("sketchbook_open")?.description).toContain("automatically")
+    const second = data<Opened>(
+      await host.call("sketchbook_open", { documentId: written.documentId }, cwd),
+    )
+    expect(second.url).toBe(first.url)
+    expect(binding).toHaveBeenCalledTimes(1)
+    expect(networkInterfaces).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports interface discovery failure without a URL or listener and keeps stored data readable", async () => {
+    const written = await write()
+    vi.mocked(networkInterfaces).mockImplementationOnce(() => {
+      throw new Error("Interface discovery failed")
+    })
+    const listen = vi.spyOn(Server.prototype, "listen")
+    const result = await host.call("sketchbook_open", { documentId: written.documentId }, cwd)
+    expect(result.isError).toBe(true)
+    expect(text(result)).toBe("Interface discovery failed")
+    expect(JSON.stringify(result)).not.toContain("http://")
+    expect(listen).not.toHaveBeenCalled()
+    expect(
+      data<Read>(await host.call("sketchbook_read", { documentId: written.documentId }, cwd)).stored
+        .document,
+    ).toEqual(document)
+  })
 
   it.each(["print", "json", "unknown"])(
     "refuses open in %s mode without a URL or socket",

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { mkdir, mkdtemp, readFile, rm, stat } from "node:fs/promises"
-import { tmpdir } from "node:os"
+import { networkInterfaces, tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { promisify } from "node:util"
 import {
@@ -48,6 +48,7 @@ async function smoke(packagePath: string, label: string): Promise<void> {
     "sketchbook_read",
     "sketchbook_write",
   ])
+  assert.equal(extension.flags.size, 0, "The viewer must not require host flags")
   const skills = loader.getSkills()
   assert.deepEqual(skills.diagnostics, [])
   assert.equal(skills.skills.length, 1)
@@ -113,6 +114,16 @@ async function smoke(packagePath: string, label: string): Promise<void> {
     const opened = await call("sketchbook_open", { documentId: created.documentId })
     assert.equal(opened.renderingVerified, false)
     const url = new URL(String(opened.url))
+    const privateAddress = Object.values(networkInterfaces())
+      .flat()
+      .find(
+        (entry) =>
+          entry?.family === "IPv4" &&
+          !entry.internal &&
+          /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(entry.address),
+      )?.address
+    assert.equal(url.hostname, privateAddress ?? "127.0.0.1")
+    assert.notEqual(url.hostname, "0.0.0.0")
     const token = new URLSearchParams(url.hash.slice(1)).get("token")
     assert.ok(token)
     const response = await fetch(new URL(`/api/documents/${created.documentId}`, url), {
@@ -147,7 +158,7 @@ async function smoke(packagePath: string, label: string): Promise<void> {
     await assert.rejects(fetch(url.origin, { signal: AbortSignal.timeout(2000) }))
     assert.deepEqual(errors, [])
     console.log(
-      `Passed ${label}: Pi discovery, skill command expansion, tools, packed browser assets, shutdown`,
+      `Passed ${label}: Pi discovery, skill command expansion, automatic LAN URL without flags, tools, packed browser assets, shutdown`,
     )
   } finally {
     for (const handler of extension.handlers.get("session_shutdown") ?? []) {
